@@ -299,19 +299,12 @@ void MainWindow::setGtkTouchscreenScrollingEnabled(bool enabled) {
 
     gtkTouchscreenScrollingEnabled = enabled;
 
-    // Run on the main thread:
-    // 0 = timeout (run as soon as possible)
-    gdk_threads_add_timeout(
-            0,
-            [](gpointer data) -> gboolean {
-                MainWindow* self = static_cast<MainWindow*>(data);
-
-                gtk_scrolled_window_set_kinetic_scrolling(GTK_SCROLLED_WINDOW(self->winXournal),
-                                                          self->gtkTouchscreenScrollingEnabled);
-
-                return FALSE;
+    Util::execInUiThread(
+            [=]() {
+                gtk_scrolled_window_set_kinetic_scrolling(GTK_SCROLLED_WINDOW(winXournal),
+                                                          gtkTouchscreenScrollingEnabled);
             },
-            this);
+            G_PRIORITY_HIGH);
 }
 
 bool MainWindow::getGtkTouchscreenScrollingEnabled() const {
