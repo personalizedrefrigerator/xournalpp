@@ -261,6 +261,20 @@ void Layout::layoutPages(int width, int height) {
     }
 }
 
+int Layout::getPaddingAbovePage(size_t pageIndex) const {
+    bool isPairedPages = this->mapper.isPairedPages();
+    const Settings* settings = this->view->getControl()->getSettings();
+
+    auto const paddingAbove =
+            sumIf(XOURNAL_PADDING, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
+
+    if (!isPairedPages) {
+        return pageIndex * XOURNAL_PADDING_BETWEEN + paddingAbove;
+    } else {
+        return pageIndex * XOURNAL_PADDING_BETWEEN / 2 + paddingAbove;
+    }
+}
+
 void Layout::setLayoutSize(int width, int height) { this->scrollHandling->setLayoutSize(width, height); }
 
 void Layout::scrollRelative(double x, double y) {
