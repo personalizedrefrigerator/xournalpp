@@ -93,7 +93,7 @@ void TouchInputHandler::scrollMotion(InputEvent const& event) {
 
     auto* layout = inputContext->getView()->getControl()->getWindow()->getLayout();
 
-    layout->scrollRelative(offset.x, offset.y);
+    layout->scrollRelative(-offset.x, -offset.y);
 }
 
 void TouchInputHandler::zoomStart() {
