@@ -81,12 +81,19 @@ auto ZoomControl::getVisibleRect() -> Rectangle<double> {
 void ZoomControl::setScrollPositionAfterZoom(utl::Point<double> scrollPos) {
     size_t currentPageIdx = this->view->getCurrentPage();
 
+    // To get the layout, we need to call view->getWidget(), which isn't const.
+    // As such, we get the view and determine `unscaledPixels` here, rather than
+    // in `getScrollPositionAfterZoom`.
     GtkWidget* widget = view->getWidget();
     Layout* layout = gtk_xournal_get_layout(widget);
 
+    // TODO(personalizedrefrigerator) While this zooms in nearly where intended, it
+    //                                "jitters" while zooming if very far into the document.
+
     // Not everything changes size as we zoom in/out. The padding, for example,
     // remains constant!
-    this->unscaledPixels = {0, static_cast<double>(layout->getPaddingAbovePage(currentPageIdx))};
+    this->unscaledPixels = {static_cast<double>(layout->getPaddingLeftOfPage(currentPageIdx)),
+                            static_cast<double>(layout->getPaddingAbovePage(currentPageIdx))};
 
     // Use this->zoomWidgetPos to zoom into a location other than the top-left (e.g. where
     // the user pinched).
@@ -94,6 +101,8 @@ void ZoomControl::setScrollPositionAfterZoom(utl::Point<double> scrollPos) {
 }
 
 auto ZoomControl::getScrollPositionAfterZoom() const -> utl::Point<double> {
+    //  If we aren't in a zoomSequence, `unscaledPixels`, `scrollPosition`, and `zoomWidgetPos
+    // can't be used to determine the scroll position! Return now.
     if (this->zoomSequenceStart == -1) {
         return {-1, -1};
     }
