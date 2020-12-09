@@ -10,6 +10,7 @@
 
 #include "control/jobs/ImageExport.h"
 #include "control/jobs/ProgressListener.h"
+#include "control/tools/StrokeHandler.h"  // Ugly fix, remove!
 #include "gui/GladeSearchpath.h"
 #include "gui/MainWindow.h"
 #include "gui/XournalView.h"
@@ -374,6 +375,12 @@ struct XournalMainPrivate {
     std::unique_ptr<GladeSearchpath> gladePath;
     std::unique_ptr<Control> control;
     std::unique_ptr<MainWindow> win;
+
+    // TODO Ugly fix, remove!
+    gchar* smoothingAlgName{};
+    double smoothingSigma = 1.1;
+    int smoothingBufferSize = 20;
+    //     int stabilizingEventLifespan = 100;
 };
 using XMPtr = XournalMainPrivate*;
 
@@ -583,6 +590,21 @@ auto on_handle_local_options(GApplication*, GVariantDict*, XMPtr app_data) -> gi
         return exportImg(*app_data->optFilename, app_data->imgFilename, app_data->exportRange, app_data->exportPngDpi,
                          app_data->exportPngWidth, app_data->exportPngHeight, app_data->exportNoBackground);
     }
+
+    StrokeHandler::smoothingAlgorithm = SMOOTHING_NONE;
+    StrokeHandler::smoothingTwoSigmaSquare = 2.42;
+    StrokeHandler::smoothingBufferSize = app_data->smoothingBufferSize;
+    if (app_data->smoothingAlgName) {
+        if ((string)app_data->smoothingAlgName == "GIMP") {
+            StrokeHandler::smoothingAlgorithm = SMOOTHING_GIMP_EURISTICS;
+            StrokeHandler::smoothingTwoSigmaSquare = 2 * app_data->smoothingSigma * app_data->smoothingSigma;
+            g_message("Smoothing algorithm: GIMP, sigma = %f, buffer size = %d", app_data->smoothingSigma,
+                      app_data->smoothingBufferSize);
+        } else if ((string)app_data->smoothingAlgName == "ARITHMETIC") {
+            StrokeHandler::smoothingAlgorithm = SMOOTHING_ARITHMETIC_MEAN;
+            g_message("Smoothing algorithm: ARITHMETIC, buffer size = %d", app_data->smoothingBufferSize);
+        }
+    }
     return -1;
 }
 
@@ -655,6 +677,22 @@ auto XournalMain::run(int argc, char** argv) -> int {
                                                    _("Display advanced export options"), nullptr, nullptr);
     g_option_group_add_entries(exportGroup, exportOptions.data());
     g_application_add_option_group(G_APPLICATION(app), exportGroup);
+
+    /**
+     * Smoothing options
+     */
+    std::array smoothingOptions = {
+            GOptionEntry{"smoothing", 0, 0, G_OPTION_ARG_STRING, &app_data.smoothingAlgName,
+                         "Smoothing alg: NONE (default), GIMP, ARITHMETIC", "NAME"},
+            GOptionEntry{"smoothing-sigma", 0, 0, G_OPTION_ARG_DOUBLE, &app_data.smoothingSigma,
+                         "Value of Sigma for GIMP smoothing", "1.1"},
+            GOptionEntry{"smoothing-buffer-size", 0, 0, G_OPTION_ARG_INT, &app_data.smoothingBufferSize,
+                         "Number of events to average when smoothing using ARITHMETIC\n", "20"},
+            GOptionEntry{nullptr}};  // Must be terminated by a nullptr. See gtk doc
+    GOptionGroup* smoothingGroup =
+            g_option_group_new("smoothing", _("Smoothing options"), _("Display smoothing options"), nullptr, nullptr);
+    g_option_group_add_entries(smoothingGroup, smoothingOptions.data());
+    g_application_add_option_group(G_APPLICATION(app), smoothingGroup);
 
     auto rv = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
