@@ -19,12 +19,12 @@
 
 guint32 StrokeHandler::lastStrokeTime;  // persist for next stroke
 
-SmoothingAlgorithm StrokeHandler::smoothingAlgorithm;
-double StrokeHandler::smoothingTwoSigmaSquare;
-int StrokeHandler::smoothingBufferSize;
+// TODO Ugly fix. Remove!
+StabilizingAlgorithm StrokeHandler::stabilizingAlgorithm;
+double StrokeHandler::stabilizingTwoSigmaSquare;
+int StrokeHandler::stabilizingBufferSize;
+int StrokeHandler::stabilizingEventLifespan;
 
-
-BufferedEvent::BufferedEvent(double x, double y, double pressure): x(x), y(y), pressure(pressure), velocity(0) {}
 
 StrokeHandler::StrokeHandler(XournalView* xournal, XojPageView* redrawable, const PageRef& page):
         InputHandler(xournal, redrawable, page),
@@ -37,6 +37,8 @@ StrokeHandler::~StrokeHandler() {
     destroySurface();
     delete reco;
     reco = nullptr;
+    delete stabilizer;
+    stabilizer = nullptr;
 }
 
 void StrokeHandler::draw(cairo_t* cr) {
@@ -64,144 +66,41 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
         return false;
     }
 
-
     double zoom = xournal->getZoom();  // Is here for debug. May be moved down
-
-    BufferedEvent newEvent(pos.x, pos.y, pos.pressure);
-
-    if (smoothingAlgorithm == SMOOTHING_GIMP_EURISTICS) {
-        /**
-         * Compute the velocity using the previous measure point
-         * Issue: timestamps don't seem to be precise enough. Different events often have the same timestamp...
-         */
-
-        BufferedEvent& lastEvent = eventQueue.front();
-
-        if (pos.timestamp == lastEventTimestamp) {
-            g_warning("Oh oh: Events with same timestamps: %d   (zoom = %f)\n  lastEvent.(x,y) = (%f,%f)\n   "
-                      "newEvent.(x,y) = (%f,%f)",
-                      pos.timestamp, zoom, lastEvent.x, lastEvent.y, newEvent.x, newEvent.y);
-            newEvent.velocity = hypot(newEvent.x - lastEvent.x, newEvent.y - lastEvent.y);
-        } else {
-            newEvent.velocity =
-                    hypot(newEvent.x - lastEvent.x, newEvent.y - lastEvent.y) / (pos.timestamp - lastEventTimestamp);
-        }
-        lastEventTimestamp = pos.timestamp;
-    }
-
-    Point currentPoint(newEvent.x / zoom, newEvent.y / zoom, newEvent.pressure);
 
     int pointCount = stroke->getPointCount();
 
-    // This is always true...
+    Point currentPoint(pos.x / zoom, pos.y / zoom);
+
+    // Can this test fails?
     if (pointCount > 0) {
-        if (smoothingAlgorithm == SMOOTHING_NONE) {
-            if (!validMotion(currentPoint, stroke->getPoint(pointCount - 1))) {
-                // The point is to close to the last painted point
-                // In practice, this happens rather rarely: <5 times per stroke in @rolandlo's libinput recording
-                return true;
-            }
-        } else {
-            eventQueue.push_front(newEvent);
-            if (!validMotion(currentPoint, stroke->getPoint(pointCount - 1))) {
-                // The point is to close to the last painted point
-                // In practice, this happens rather rarely: <5 times per stroke in @rolandlo's libinput recording
-                eventQueue.pop_back();
-                return true;
-            }
-            currentPoint = getAveragedPoint(zoom);
-            eventQueue.pop_back();
+        if (!validMotion(currentPoint, stroke->getPoint(pointCount - 1))) {
+            /**
+             * Add the event to the stabilizer's buffer
+             */
+            stabilizer->pushEvent(pos);
+            return true;
         }
     }
-    addStrokeSegment(currentPoint);
-    return true;
-}
-
-/**
- * @brief Computes the average of the events in eventQueue according
- * to the algorithm defined in StrokeHandler::smoothingAlgorithm.
- * Converts this averaged event into a point using the parameter zoom
- *
- * In theory, this function is only called if smoothingAlgorithm != SMOOTHING_NONE
- *
- * @param zoom The current zoom to apply.
- *
- * @return The averaged point to be painted.
- */
-auto StrokeHandler::getAveragedPoint(const double zoom) -> Point {
-    double averagedX = 0;
-    double averagedY = 0;
-    double averagedPressure = 0;
-    double sumOfWeights = 0;
-
-    // Sanity check. To be removed later
-    int i = 0;
-
-    double weight;
-    double sumOfVelocities = 0;
-
 
     /**
-     * Type of it: std::deque<BufferedEvent>::const_iterator
+     * if the stabilizer is disabled, this does not change anything.
      */
-    for (auto it = eventQueue.cbegin(); it != eventQueue.cend(); ++it) {
+    stabilizer->stabilizePointUsingEvent(pos, zoom, &currentPoint);
 
-        i++;  // Sanity check. To be removed later
+    /**
+     * The new and stabilized point may not satisfy
+     * validMotion(currentPoint, stroke->getPoint(pointCount - 1))
+     * anymore.
+     * Retest here?
+     */
 
-        if (smoothingAlgorithm == SMOOTHING_GIMP_EURISTICS) {
-            sumOfVelocities += (*it).velocity;  // Mimicking Gimp's formula
-            weight = exp(-sumOfVelocities * sumOfVelocities / smoothingTwoSigmaSquare);
-            averagedX += weight * (*it).x;
-            averagedY += weight * (*it).y;
-            averagedPressure += weight * (*it).pressure;
-            sumOfWeights += weight;
-        } else if (smoothingAlgorithm == SMOOTHING_ARITHMETIC_MEAN) {
-            averagedX += (*it).x;
-            averagedY += (*it).y;
-            averagedPressure += (*it).pressure;
-            sumOfWeights += 1;
-        } else {
-            // Safeguard: This should never happen
-            // default to SMOOTHING_NONE
-            averagedX = (*it).x;
-            averagedY = (*it).y;
-            averagedPressure = (*it).pressure;
-            sumOfWeights = 1;
-            break;
-        }
-    }
-    if (sumOfWeights == 0) {
-        g_warning("sumOfWeights = %f, i = %d, sumOfVelocities = %f, weight = %f, (x,y) = (%f,%f)", sumOfWeights, i,
-                  sumOfVelocities, weight, averagedX, averagedY);
-        sumOfVelocities = 0;
-        printf("Buffer:\n  i |     x     |     y     |     v     |    sumV    |     w     |\n");
-        for (auto it = eventQueue.cbegin(); it != eventQueue.cend(); ++it) {
-            sumOfVelocities += (*it).velocity;  // Mimicking Gimp's formula
-            weight = exp(-sumOfVelocities * sumOfVelocities / smoothingTwoSigmaSquare);
-            printf(" %2d | %9f | %9f | %9f | %10f | %9f |\n", i, (*it).x, (*it).y, (*it).velocity, sumOfVelocities,
-                   weight);
-        }
-    }
-    averagedX = averagedX / sumOfWeights;
-    averagedY = averagedY / sumOfWeights;
-    averagedPressure = averagedPressure / sumOfWeights;
-
-    // Sanity check. To be removed later.
-    if (i != smoothingBufferSize) {
-        g_warning("Averaged %d points instead of %d.\n  Computed (x,y)=(%f,%f)", i, smoothingBufferSize, averagedX,
-                  averagedY);
+    // currentPoint.z contains the pressure at this point
+    if (Point::NO_PRESSURE != currentPoint.z && stroke->getToolType() == STROKE_TOOL_PEN) {
+        stroke->setLastPressure(currentPoint.z * stroke->getWidth());
     }
 
-    return Point(averagedX / zoom, averagedY / zoom, averagedPressure);
-}
-
-void StrokeHandler::addStrokeSegment(Point& point) {
-    // point.z contains the pressure at this point
-    if (Point::NO_PRESSURE != point.z && stroke->getToolType() == STROKE_TOOL_PEN) {
-        stroke->setLastPressure(point.z * stroke->getWidth());
-    }
-
-    stroke->addPoint(point);
+    stroke->addPoint(currentPoint);
 
     if ((stroke->getFill() != -1 || stroke->getLineStyle().hasDashes()) &&
         !(stroke->getFill() != -1 && stroke->getToolType() == STROKE_TOOL_HIGHLIGHTER)) {
@@ -216,14 +115,13 @@ void StrokeHandler::addStrokeSegment(Point& point) {
 
         view.drawStroke(crMask, stroke, 0, 1, true, true);
     } else {
-        int pointCount = stroke->getPointCount();
-        if (pointCount > 1) {  // Should always be true...
-            Point prevPoint(stroke->getPoint(pointCount - 2));
+        if (pointCount > 0) {  // Should always be true...
+            Point prevPoint(stroke->getPoint(pointCount - 1));
 
             Stroke lastSegment;
 
             lastSegment.addPoint(prevPoint);
-            lastSegment.addPoint(point);
+            lastSegment.addPoint(currentPoint);
             lastSegment.setWidth(stroke->getWidth());
 
             cairo_set_operator(crMask, CAIRO_OPERATOR_OVER);
@@ -237,6 +135,8 @@ void StrokeHandler::addStrokeSegment(Point& point) {
 
     this->redrawable->repaintRect(stroke->getX() - w, stroke->getY() - w, stroke->getElementWidth() + 2 * w,
                                   stroke->getElementHeight() + 2 * w);
+
+    return true;
 }
 
 void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
@@ -424,19 +324,7 @@ void StrokeHandler::onButtonPressEvent(const PositionInputData& pos) {
 
         createStroke(Point(this->buttonDownPoint.x, this->buttonDownPoint.y));
 
-        if (smoothingAlgorithm != SMOOTHING_NONE) {
-            /**
-             * Fill the queue with copies of our starting point
-             * Is this the best way to do this? We could also aggregate the first events as they come
-             * but this would add a test (on the length of the queue) at every event triggered.
-             */
-            for (int i = 1; i < smoothingBufferSize; i++) {
-                // The next event will be pushed before averaging, so there will be exactly smoothingBufferSize elements
-                // in the queue then.
-                eventQueue.emplace_front(pos.x, pos.y, pos.pressure);
-            }
-            lastEventTimestamp = pos.timestamp;  // Only needed by SMOOTHING_GIMP_EURISTICS
-        }
+        stabilizer = StrokeStabilizerFactory::getStabilizer(pos);
     }
 
     this->startStrokeTime = pos.timestamp;

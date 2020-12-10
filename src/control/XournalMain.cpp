@@ -377,10 +377,10 @@ struct XournalMainPrivate {
     std::unique_ptr<MainWindow> win;
 
     // TODO Ugly fix, remove!
-    gchar* smoothingAlgName{};
-    double smoothingSigma = 1.1;
-    int smoothingBufferSize = 20;
-    //     int stabilizingEventLifespan = 100;
+    gchar* stabilizingAlgName{};
+    double stabilizingSigma = 1.1;
+    int stabilizingBufferSize = 20;
+    int stabilizingEventLifespan = 120;
 };
 using XMPtr = XournalMainPrivate*;
 
@@ -591,18 +591,19 @@ auto on_handle_local_options(GApplication*, GVariantDict*, XMPtr app_data) -> gi
                          app_data->exportPngWidth, app_data->exportPngHeight, app_data->exportNoBackground);
     }
 
-    StrokeHandler::smoothingAlgorithm = SMOOTHING_NONE;
-    StrokeHandler::smoothingTwoSigmaSquare = 2.42;
-    StrokeHandler::smoothingBufferSize = app_data->smoothingBufferSize;
-    if (app_data->smoothingAlgName) {
-        if ((string)app_data->smoothingAlgName == "GIMP") {
-            StrokeHandler::smoothingAlgorithm = SMOOTHING_GIMP_EURISTICS;
-            StrokeHandler::smoothingTwoSigmaSquare = 2 * app_data->smoothingSigma * app_data->smoothingSigma;
-            g_message("Smoothing algorithm: GIMP, sigma = %f, buffer size = %d", app_data->smoothingSigma,
-                      app_data->smoothingBufferSize);
-        } else if ((string)app_data->smoothingAlgName == "ARITHMETIC") {
-            StrokeHandler::smoothingAlgorithm = SMOOTHING_ARITHMETIC_MEAN;
-            g_message("Smoothing algorithm: ARITHMETIC, buffer size = %d", app_data->smoothingBufferSize);
+    StrokeHandler::stabilizingAlgorithm = STABILIZING_NONE;
+    StrokeHandler::stabilizingTwoSigmaSquare = 2.42;
+    StrokeHandler::stabilizingBufferSize = app_data->stabilizingBufferSize;
+    StrokeHandler::stabilizingEventLifespan = app_data->stabilizingEventLifespan;
+    if (app_data->stabilizingAlgName) {
+        if ((string)app_data->stabilizingAlgName == "GIMP") {
+            StrokeHandler::stabilizingAlgorithm = STABILIZING_GIMP_EURISTICS;
+            StrokeHandler::stabilizingTwoSigmaSquare = 2 * app_data->stabilizingSigma * app_data->stabilizingSigma;
+            g_message("Stabilizing algorithm: GIMP, sigma = %f, eventLifespan = %d", app_data->stabilizingSigma,
+                      app_data->stabilizingEventLifespan);
+        } else if ((string)app_data->stabilizingAlgName == "ARITHMETIC") {
+            StrokeHandler::stabilizingAlgorithm = STABILIZING_ARITHMETIC_MEAN;
+            g_message("Stabilizing algorithm: ARITHMETIC, buffer size = %d", app_data->stabilizingBufferSize);
         }
     }
     return -1;
@@ -651,7 +652,7 @@ auto XournalMain::run(int argc, char** argv) -> int {
             GOptionEntry{"export-no-background", 0, 0, G_OPTION_ARG_NONE, &app_data.exportNoBackground,
                          _("Export without background\n"
                            "                                 The exported file has transparent or white background,\n"
-                           "                                 depending on what its format supports\n"),
+                           "                                 depending on what its format supports"),
                          0},
             GOptionEntry{"export-range", 0, 0, G_OPTION_ARG_STRING, &app_data.exportRange,
                          _("Only export the pages specified by RANGE (e.g. \"2-3,5,7-\")\n"
@@ -679,20 +680,22 @@ auto XournalMain::run(int argc, char** argv) -> int {
     g_application_add_option_group(G_APPLICATION(app), exportGroup);
 
     /**
-     * Smoothing options
+     * Stabilizing options
      */
-    std::array smoothingOptions = {
-            GOptionEntry{"smoothing", 0, 0, G_OPTION_ARG_STRING, &app_data.smoothingAlgName,
-                         "Smoothing alg: NONE (default), GIMP, ARITHMETIC", "NAME"},
-            GOptionEntry{"smoothing-sigma", 0, 0, G_OPTION_ARG_DOUBLE, &app_data.smoothingSigma,
-                         "Value of Sigma for GIMP smoothing", "1.1"},
-            GOptionEntry{"smoothing-buffer-size", 0, 0, G_OPTION_ARG_INT, &app_data.smoothingBufferSize,
-                         "Number of events to average when smoothing using ARITHMETIC\n", "20"},
+    std::array stabilizingOptions = {
+            GOptionEntry{"stabilizing", 0, 0, G_OPTION_ARG_STRING, &app_data.stabilizingAlgName,
+                         "Stabilizing alg: NONE (default), GIMP, ARITHMETIC", "NAME"},
+            GOptionEntry{"stabilizing-sigma", 0, 0, G_OPTION_ARG_DOUBLE, &app_data.stabilizingSigma,
+                         "Value of Sigma for GIMP stabilizing", "1.1"},
+            GOptionEntry{"stabilizing-buffer-size", 0, 0, G_OPTION_ARG_INT, &app_data.stabilizingBufferSize,
+                         "Number of events to average when stabilizing using ARITHMETIC", "20"},
+            GOptionEntry{"stabilizing-event-lifespan", 0, 0, G_OPTION_ARG_INT, &app_data.stabilizingEventLifespan,
+                         "Lifespan (in ms) of events in the buffer when using GIMP", "120"},
             GOptionEntry{nullptr}};  // Must be terminated by a nullptr. See gtk doc
-    GOptionGroup* smoothingGroup =
-            g_option_group_new("smoothing", _("Smoothing options"), _("Display smoothing options"), nullptr, nullptr);
-    g_option_group_add_entries(smoothingGroup, smoothingOptions.data());
-    g_application_add_option_group(G_APPLICATION(app), smoothingGroup);
+    GOptionGroup* stabilizingGroup =
+            g_option_group_new("stabilizing", _("Input stabilizing options"), _("Display input stabilizing options"), nullptr, nullptr);
+    g_option_group_add_entries(stabilizingGroup, stabilizingOptions.data());
+    g_application_add_option_group(G_APPLICATION(app), stabilizingGroup);
 
     auto rv = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);

@@ -11,26 +11,13 @@
 
 #pragma once
 
-#include <deque>
-
-#include "control/XournalMain.h"
+#include "StrokeStabilizer/StrokeStabilizer.h"
 #include "view/DocumentView.h"
 
 #include "InputHandler.h"
 #include "SnapToGridInputHandler.h"
 
 class ShapeRecognizer;
-
-enum SmoothingAlgorithm { SMOOTHING_NONE, SMOOTHING_ARITHMETIC_MEAN, SMOOTHING_GIMP_EURISTICS };
-
-class BufferedEvent {
-public:
-    BufferedEvent(double x, double y, double pressure);
-    double x;
-    double y;
-    double pressure;
-    double velocity;
-};
 
 /**
  * @brief The stroke handler draws a stroke on a XojPageView
@@ -59,9 +46,11 @@ public:
      */
     virtual void resetShapeRecognizer();
 
-    static SmoothingAlgorithm smoothingAlgorithm;
-    static double smoothingTwoSigmaSquare;
-    static int smoothingBufferSize;
+    // TODO Ugly fix. Remove
+    static StabilizingAlgorithm stabilizingAlgorithm;
+    static double stabilizingTwoSigmaSquare;
+    static int stabilizingBufferSize;
+    static int stabilizingEventLifespan;
 
 protected:
     void strokeRecognizerDetected(ShapeRecognizerResult* result, Layer* layer);
@@ -91,35 +80,5 @@ private:
     guint32 startStrokeTime{};
     static guint32 lastStrokeTime;  // persist across strokes - allow us to not ignore persistent dotting.
 
-    /**
-     * @brief A queue containing the relevant information on the last Move events
-     * The beginning of the queue contains the most recent event
-     * The end of the queue contains the most ancient event stored
-     */
-    std::deque<BufferedEvent> eventQueue;
-
-    /**
-     * @brief The timestamp of the most recent event in the queue
-     */
-    guint32 lastEventTimestamp;
-
-    /**
-     * @brief Append a segment to the stroke and paint it
-     * @param point The endpoint of the segment
-     */
-    void addStrokeSegment(Point& point);
-
-
-    /**
-     * @brief Computes the average of the events in eventQueue according
-     * to the algorithm defined in StrokeHandler::smoothingAlgorithm.
-     * Converts this averaged event into a point using the parameter zoom
-     *
-     * In theory, this function is only called if smoothingAlgorithm != SMOOTHING_NONE
-     *
-     * @param zoom The current zoom to apply.
-     *
-     * @return The averaged point to be painted.
-     */
-    Point getAveragedPoint(const double zoom);
+    StrokeStabilizer* stabilizer;
 };
