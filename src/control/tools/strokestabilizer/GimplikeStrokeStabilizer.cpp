@@ -61,13 +61,12 @@ void GimplikeStrokeStabilizer::stabilizePointUsingEvent(const PositionInputData&
     double sumOfWeights = 0;
     double sumOfVelocities = 0;
 
-    // Type of it: std::deque<GimplikeBufferedEvent>::const_iterator
-    for (auto it = eventBuffer.cbegin(); it != eventBuffer.cend(); ++it) {
-        sumOfVelocities += (*it).velocity;  // Mimicking Gimp's formula
+    for (auto&& event: eventBuffer) {
+        sumOfVelocities += event.velocity;  // Mimicking Gimp's formula
         weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
-        weightedSumOfX += weight * (*it).x;
-        weightedSumOfY += weight * (*it).y;
-        weightedSumOfPressures += weight * (*it).pressure;
+        weightedSumOfX += weight * event.x;
+        weightedSumOfY += weight * event.y;
+        weightedSumOfPressures += weight * event.pressure;
         sumOfWeights += weight;
     }
 
@@ -77,12 +76,12 @@ void GimplikeStrokeStabilizer::stabilizePointUsingEvent(const PositionInputData&
         int i = 0;
         sumOfVelocities = 0;
         printf("Buffer:\n id | timestamp |     x     |     y     |     v     |    sumV    |     w     |\n");
-        for (auto it = eventBuffer.cbegin(); it != eventBuffer.cend(); ++it) {
+        for (auto&& event: eventBuffer) {
             i++;
-            sumOfVelocities += (*it).velocity;  // Mimicking Gimp's formula
+            sumOfVelocities += event.velocity;  // Mimicking Gimp's formula
             weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
-            printf(" %2d | %9d | %9f | %9f | %9f | %10f | %9f |\n", i, (*it).timestamp, (*it).x, (*it).y,
-                   (*it).velocity, sumOfVelocities, weight);
+            printf(" %2d | %9d | %9f | %9f | %9f | %10f | %9f |\n", i, event.timestamp, event.x, event.y,
+                   event.velocity, sumOfVelocities, weight);
         }
     }
 

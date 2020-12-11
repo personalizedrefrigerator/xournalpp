@@ -15,23 +15,23 @@
 #include "GimplikeStrokeStabilizer.h"
 
 
-auto StrokeStabilizerFactory::getStabilizer(const PositionInputData& pos) -> StrokeStabilizer* {
+auto StrokeStabilizerFactory::getStabilizer(PositionInputData const& pos) -> std::unique_ptr<StrokeStabilizer> {
     /**
-     * Figure out how config is done
+     * TODO Figure out how Settings work
      */
     if (StrokeHandler::stabilizingAlgorithm == STABILIZING_GIMP_EURISTICS) {
         g_message("Creating GimplikeStrokeStabilizer");
-        return new GimplikeStrokeStabilizer(pos);
+        return std::make_unique<GimplikeStrokeStabilizer>(pos);
     }
 
     if (StrokeHandler::stabilizingAlgorithm == STABILIZING_ARITHMETIC_MEAN) {
         g_message("Creating ArithmeticStrokeStabilizer");
-        return new ArithmeticStrokeStabilizer(pos);
+        return std::make_unique<ArithmeticStrokeStabilizer>(pos);
     }
 
     /**
      * Defaults to no stabilization
      */
     g_message("Creating default StrokeStabilizer");
-    return new StrokeStabilizer();
+    return std::make_unique<StrokeStabilizer>();
 }

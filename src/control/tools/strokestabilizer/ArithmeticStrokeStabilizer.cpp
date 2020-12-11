@@ -1,6 +1,7 @@
 #include "ArithmeticStrokeStabilizer.h"
 
 #include <cmath>
+#include <numeric>
 
 // #include <control/XournalMain.h>
 // #include <gdk/gdk.h>
@@ -13,7 +14,7 @@
 
 ArithmeticStrokeStabilizer::ArithmeticStrokeStabilizer(const PositionInputData& pos):
         // TODO read config
-        bufferLength(StrokeHandler::stabilizingBufferSize) {
+        bufferLength(std::max(2, StrokeHandler::stabilizingBufferSize)) {
     /**
      * Fill the queue with copies of our starting point
      * Is this the best way to do this? We could also aggregate the first events as they come
@@ -37,16 +38,10 @@ void ArithmeticStrokeStabilizer::stabilizePointUsingEvent(const PositionInputDat
     /**
      * Average the coordinates using an arithmetic mean
      */
-    double sumOfX = 0;
-    double sumOfY = 0;
-    double sumOfPressures = 0;
-
-    // Type of it: std::deque<BufferedEvent>::const_iterator
-    for (auto it = eventBuffer.cbegin(); it != eventBuffer.cend(); ++it) {
-        sumOfX += (*it).x;
-        sumOfY += (*it).y;
-        sumOfPressures += (*it).pressure;
-    }
+    BufferedEvent sum =
+            std::reduce(begin(eventBuffer), end(eventBuffer), BufferedEvent(0.0, 0.0, 0.0), [](auto&& lhs, auto&& rhs) {
+                return BufferedEvent(lhs.x + rhs.x, lhs.y + rhs.y, lhs.pressure + rhs.pressure);
+            });
 
     /**
      * Pop the oldest event to keep the bufferLength constant
@@ -56,15 +51,20 @@ void ArithmeticStrokeStabilizer::stabilizePointUsingEvent(const PositionInputDat
     /**
      * Rescale the averaged coordinates before assigning them to the point
      */
-    point->x = sumOfX / ((double)bufferLength * zoom);
-    point->y = sumOfY / ((double)bufferLength * zoom);
-    point->z = sumOfPressures / (double)bufferLength;
+    point->x = sum.x / ((double)bufferLength * zoom);
+    point->y = sum.y / ((double)bufferLength * zoom);
+    point->z = sum.pressure / (double)bufferLength;
 }
 
 void ArithmeticStrokeStabilizer::pushEvent(const PositionInputData& pos) {
-    eventBuffer.emplace_front(pos.x, pos.y, pos.pressure);
     /**
      * Keep the length of the buffer constant
      */
-    eventBuffer.pop_back();
+    if (!eventBuffer.empty()) {
+        eventBuffer.pop_back();
+    } else {
+        g_warning("ArithmeticStrokeStabilizer: The buffer is empty. It shouldn't be!");
+    }
+
+    eventBuffer.emplace_front(pos.x, pos.y, pos.pressure);
 }

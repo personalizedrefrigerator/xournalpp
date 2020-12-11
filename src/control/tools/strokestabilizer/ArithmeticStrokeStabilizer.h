@@ -37,7 +37,7 @@ private:
     /**
      * @brief The length of the buffer
      */
-    const int bufferLength;
+    size_t const bufferLength;
 
     /**
      * @brief A queue containing the relevant information on the last events

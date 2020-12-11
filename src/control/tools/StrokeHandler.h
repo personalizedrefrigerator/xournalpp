@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "StrokeStabilizer/StrokeStabilizer.h"
+#include "strokestabilizer/StrokeStabilizer.h"
 #include "view/DocumentView.h"
 
 #include "InputHandler.h"
@@ -80,5 +80,5 @@ private:
     guint32 startStrokeTime{};
     static guint32 lastStrokeTime;  // persist across strokes - allow us to not ignore persistent dotting.
 
-    StrokeStabilizer* stabilizer;
+    std::unique_ptr<StrokeStabilizer> stabilizer;
 };

@@ -11,7 +11,9 @@
 
 #pragma once
 
+#include "control/settings/Settings.h"
 #include "control/tools/InputHandler.h"
+
 
 enum StabilizingAlgorithm { STABILIZING_NONE, STABILIZING_ARITHMETIC_MEAN, STABILIZING_GIMP_EURISTICS };
 
@@ -58,5 +60,5 @@ namespace StrokeStabilizerFactory {
  *
  * @return The StrokeStabilizer
  */
-StrokeStabilizer* getStabilizer(const PositionInputData& pos);
+std::unique_ptr<StrokeStabilizer> getStabilizer(PositionInputData const& pos);
 };  // namespace StrokeStabilizerFactory

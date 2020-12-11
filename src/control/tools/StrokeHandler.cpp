@@ -37,8 +37,6 @@ StrokeHandler::~StrokeHandler() {
     destroySurface();
     delete reco;
     reco = nullptr;
-    delete stabilizer;
-    stabilizer = nullptr;
 }
 
 void StrokeHandler::draw(cairo_t* cr) {
