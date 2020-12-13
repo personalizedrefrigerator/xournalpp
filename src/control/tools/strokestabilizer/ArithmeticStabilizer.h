@@ -13,25 +13,24 @@
 
 #include <deque>
 
-#include "StrokeStabilizer.h"
+#include "Stabilizer.h"
 
-class ArithmeticStrokeStabilizer: public StrokeStabilizer {
+class ArithmeticStabilizer: public Stabilizer {
 public:
-    ArithmeticStrokeStabilizer(const PositionInputData& pos);
-    virtual ~ArithmeticStrokeStabilizer() = default;
+    ArithmeticStabilizer(const PositionInputData& pos);
+    virtual ~ArithmeticStabilizer() = default;
 
     /**
      * @brief Push the event to the buffer and stabilizes (in place) the coordinates of *point
      * @param pos The event to be pushed
      * @param zoom The zoom level to rescale the point's coordinates
-     * @param point A pointer to the point being stabilized
      */
-    virtual void stabilizePointUsingEvent(const PositionInputData& pos, double zoom, Point* point);
+    virtual int feedMoveEvent(const PositionInputData& pos, double zoom);
 
     /**
      * @brief Push the event to the buffer
      */
-    virtual void pushEvent(const PositionInputData& pos);
+    virtual void pushMoveEvent(const PositionInputData& pos);
 
 private:
     /**

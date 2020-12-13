@@ -19,17 +19,11 @@
 
 guint32 StrokeHandler::lastStrokeTime;  // persist for next stroke
 
-// TODO Ugly fix. Remove!
-StabilizingAlgorithm StrokeHandler::stabilizingAlgorithm;
-double StrokeHandler::stabilizingTwoSigmaSquare;
-int StrokeHandler::stabilizingBufferSize;
-int StrokeHandler::stabilizingEventLifespan;
-
 
 StrokeHandler::StrokeHandler(XournalView* xournal, XojPageView* redrawable, const PageRef& page):
         InputHandler(xournal, redrawable, page),
-        surfMask(nullptr),
         snappingHandler(xournal->getControl()->getSettings()),
+        surfMask(nullptr),
         crMask(nullptr),
         reco(nullptr) {}
 
@@ -76,29 +70,42 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
             /**
              * Add the event to the stabilizer's buffer
              */
-            stabilizer->pushEvent(pos);
+            stabilizer->pushMoveEvent(pos);
             return true;
         }
     }
 
     /**
-     * if the stabilizer is disabled, this does not change anything.
+     * if the stabilizer is disabled, this returns -1.
      */
-    stabilizer->stabilizePointUsingEvent(pos, zoom, &currentPoint);
-
-    /**
-     * The new and stabilized point may not satisfy
-     * validMotion(currentPoint, stroke->getPoint(pointCount - 1))
-     * anymore.
-     * Retest here?
-     */
-
-    // currentPoint.z contains the pressure at this point
-    if (Point::NO_PRESSURE != currentPoint.z && stroke->getToolType() == STROKE_TOOL_PEN) {
-        stroke->setLastPressure(currentPoint.z * stroke->getWidth());
+    int nbPoints = stabilizer->feedMoveEvent(pos, zoom);
+    if (nbPoints <= 0) {
+        if (nbPoints < 0) {
+            /**
+             * The stabilizer did not do anything.
+             * Use the original point and return
+             */
+            drawSegmentTo(currentPoint);
+        }
+        /**
+         * nbPoints == 0 means the stabilizer invalidated the event
+         */
+        return true;
     }
 
-    stroke->addPoint(currentPoint);
+    for (auto&& point: stabilizer->pointsToPaint) {
+        drawSegmentTo(point);
+    }
+    return true;
+}
+
+void StrokeHandler::drawSegmentTo(Point& point) {
+    // point.z contains the pressure at this point
+    if (Point::NO_PRESSURE != point.z && stroke->getToolType() == STROKE_TOOL_PEN) {
+        stroke->setLastPressure(point.z * stroke->getWidth());
+    }
+
+    stroke->addPoint(point);
 
     if ((stroke->getFill() != -1 || stroke->getLineStyle().hasDashes()) &&
         !(stroke->getFill() != -1 && stroke->getToolType() == STROKE_TOOL_HIGHLIGHTER)) {
@@ -113,13 +120,14 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
 
         view.drawStroke(crMask, stroke, 0, 1, true, true);
     } else {
-        if (pointCount > 0) {  // Should always be true...
-            Point prevPoint(stroke->getPoint(pointCount - 1));
+        int pointCount = stroke->getPointCount();
+        if (pointCount > 1) {  // Should always be true...
+            Point prevPoint(stroke->getPoint(pointCount - 2));
 
             Stroke lastSegment;
 
             lastSegment.addPoint(prevPoint);
-            lastSegment.addPoint(currentPoint);
+            lastSegment.addPoint(point);
             lastSegment.setWidth(stroke->getWidth());
 
             cairo_set_operator(crMask, CAIRO_OPERATOR_OVER);
@@ -133,8 +141,6 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
 
     this->redrawable->repaintRect(stroke->getX() - w, stroke->getY() - w, stroke->getElementWidth() + 2 * w,
                                   stroke->getElementHeight() + 2 * w);
-
-    return true;
 }
 
 void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {

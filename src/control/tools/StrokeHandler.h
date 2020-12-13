@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "strokestabilizer/StrokeStabilizer.h"
+#include "strokestabilizer/Stabilizer.h"
 #include "view/DocumentView.h"
 
 #include "InputHandler.h"
@@ -46,12 +46,6 @@ public:
      */
     virtual void resetShapeRecognizer();
 
-    // TODO Ugly fix. Remove
-    static StabilizingAlgorithm stabilizingAlgorithm;
-    static double stabilizingTwoSigmaSquare;
-    static int stabilizingBufferSize;
-    static int stabilizingEventLifespan;
-
 protected:
     void strokeRecognizerDetected(ShapeRecognizerResult* result, Layer* layer);
     void destroySurface();
@@ -80,5 +74,14 @@ private:
     guint32 startStrokeTime{};
     static guint32 lastStrokeTime;  // persist across strokes - allow us to not ignore persistent dotting.
 
-    std::unique_ptr<StrokeStabilizer> stabilizer;
+    /**
+     * @brief Pointer to the Stabilizer instance
+     */
+    std::unique_ptr<Stabilizer> stabilizer;
+
+    /**
+     * @brief Add a segment to the stroke
+     * @param point The endpoint of the added segment
+     */
+    void drawSegmentTo(Point& point);
 };

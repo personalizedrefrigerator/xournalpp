@@ -1,8 +1,6 @@
-#include "GimplikeStrokeStabilizer.h"
+#include "GimplikeStabilizer.h"
 
 #include <cmath>
-
-#include <control/tools/StrokeHandler.h>  // TODO Ugly fix, remove!
 
 // #include <control/XournalMain.h>
 // #include <gdk/gdk.h>
@@ -11,20 +9,20 @@
 // #include "control/settings/Settings.h"
 // #include "config-features.h"
 
-GimplikeStrokeStabilizer::GimplikeStrokeStabilizer(const PositionInputData& pos):
+GimplikeStabilizer::GimplikeStabilizer(const PositionInputData& pos):
         // TODO read config
-        twoSigmaSquared(StrokeHandler::stabilizingTwoSigmaSquare),
-        eventLifespan(StrokeHandler::stabilizingEventLifespan) {
-    eventBuffer.emplace_front(pos.x, pos.y, pos.pressure, 0, pos.timestamp);
-    g_message("Created GimplikeStrokeStabilizer with 2σ² = %f and eventLifespan = %d", twoSigmaSquared, eventLifespan);
+        twoSigmaSquared(StrokeStabilizerFactory::twoSigmaSquare),
+        eventLifespan(StrokeStabilizerFactory::eventLifespan) {
+    eventBuffer.emplace_front(pos);
+    g_message("Created GimplikeStabilizer with 2σ² = %f and eventLifespan = %d", twoSigmaSquared, eventLifespan);
 }
 
-void GimplikeStrokeStabilizer::stabilizePointUsingEvent(const PositionInputData& pos, double zoom, Point* point) {
+auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom) -> int {
 
     /**
      * Compute the velocity and pushes the event
      */
-    pushEvent(pos);
+    pushMoveEvent(pos);
 
     /**
      * Flush expired events
@@ -88,26 +86,25 @@ void GimplikeStrokeStabilizer::stabilizePointUsingEvent(const PositionInputData&
     //     double x=point->x, y=point->y, z=point->z; //debug
 
 
-    point->z = weightedSumOfPressures / sumOfWeights;
+    double averagedPressure = weightedSumOfPressures / sumOfWeights;
 
+    pointsToPaint.clear();
     /**
      * Rescale the averaged coordinates before assigning them to the point
      */
     sumOfWeights *= zoom;
-    point->x = weightedSumOfX / sumOfWeights;
-    point->y = weightedSumOfY / sumOfWeights;
-
-    //     g_message("old.(x,y,z) = (%f,%f,%f)   new.(x,y,z) = (%f,%f,%f)", x,y,z,point->x,point->y,point->z);
+    pointsToPaint.emplace_back(weightedSumOfX / sumOfWeights, weightedSumOfY / sumOfWeights, averagedPressure);
+    return 1;
 }
 
-void GimplikeStrokeStabilizer::pushEvent(const PositionInputData& pos) {
+void GimplikeStabilizer::pushMoveEvent(const PositionInputData& pos) {
 
 #ifdef STAB_DEBUG
     bufferSize++;
 #endif
     if (eventBuffer.empty()) {
-        g_warning("GimplikeStrokeStabilizer::pushEvent: Empty buffer");
-        eventBuffer.emplace_front(pos.x, pos.y, pos.pressure, 0, pos.timestamp);
+        g_warning("GimplikeStabilizer::pushEvent: Empty buffer");
+        eventBuffer.emplace_front(pos);
         return;
     }
 
@@ -130,6 +127,5 @@ void GimplikeStrokeStabilizer::pushEvent(const PositionInputData& pos) {
      * Create and push the event
      * See GimplikeBufferedEvent::GimplikeBufferedEvent(...)
      */
-    eventBuffer.emplace_front(pos.x, pos.y, pos.pressure,
-                              hypot(pos.x - lastEvent.x, pos.y - lastEvent.y) / ((double)timelaps), pos.timestamp);
+    eventBuffer.emplace_front(pos, hypot(pos.x - lastEvent.x, pos.y - lastEvent.y) / ((double)timelaps));
 }

@@ -10,7 +10,7 @@
 
 #include "control/jobs/ImageExport.h"
 #include "control/jobs/ProgressListener.h"
-#include "control/tools/StrokeHandler.h"  // Ugly fix, remove!
+#include "control/tools/strokestabilizer/Stabilizer.h"  // Ugly fix, remove!
 #include "gui/GladeSearchpath.h"
 #include "gui/MainWindow.h"
 #include "gui/XournalView.h"
@@ -379,8 +379,11 @@ struct XournalMainPrivate {
     // TODO Ugly fix, remove!
     gchar* stabilizingAlgName{};
     double stabilizingSigma = 1.1;
-    int stabilizingBufferSize = 20;
-    int stabilizingEventLifespan = 120;
+    int bufferSize = 20;
+    int eventLifespan = 120;
+    double deadzoneRadius = 1.2;
+    bool noCuspDetection = false;
+    bool noAveraging = false;
 };
 using XMPtr = XournalMainPrivate*;
 
@@ -591,19 +594,31 @@ auto on_handle_local_options(GApplication*, GVariantDict*, XMPtr app_data) -> gi
                          app_data->exportPngWidth, app_data->exportPngHeight, app_data->exportNoBackground);
     }
 
-    StrokeHandler::stabilizingAlgorithm = STABILIZING_NONE;
-    StrokeHandler::stabilizingTwoSigmaSquare = 2.42;
-    StrokeHandler::stabilizingBufferSize = app_data->stabilizingBufferSize;
-    StrokeHandler::stabilizingEventLifespan = app_data->stabilizingEventLifespan;
+    // TODO Ugly fix, remove
+    StrokeStabilizerFactory::algorithm = STABILIZING_NONE;
+    StrokeStabilizerFactory::twoSigmaSquare = 2.42;
+    StrokeStabilizerFactory::bufferSize = app_data->bufferSize;
+    StrokeStabilizerFactory::eventLifespan = app_data->eventLifespan;
+    StrokeStabilizerFactory::deadzoneRadius = app_data->deadzoneRadius;
+    StrokeStabilizerFactory::cuspDetection = !app_data->noCuspDetection;
+    StrokeStabilizerFactory::averagingOn = !app_data->noAveraging;
     if (app_data->stabilizingAlgName) {
         if ((string)app_data->stabilizingAlgName == "GIMP") {
-            StrokeHandler::stabilizingAlgorithm = STABILIZING_GIMP_EURISTICS;
-            StrokeHandler::stabilizingTwoSigmaSquare = 2 * app_data->stabilizingSigma * app_data->stabilizingSigma;
+            StrokeStabilizerFactory::algorithm = STABILIZING_GIMP_EURISTICS;
+            StrokeStabilizerFactory::twoSigmaSquare = 2 * app_data->stabilizingSigma * app_data->stabilizingSigma;
             g_message("Stabilizing algorithm: GIMP, sigma = %f, eventLifespan = %d", app_data->stabilizingSigma,
-                      app_data->stabilizingEventLifespan);
+                      app_data->eventLifespan);
+        } else if ((string)app_data->stabilizingAlgName == "DEADZONE") {
+            StrokeStabilizerFactory::algorithm = STABILIZING_DEADZONE;
+            StrokeStabilizerFactory::twoSigmaSquare = 2 * app_data->stabilizingSigma * app_data->stabilizingSigma;
+            StrokeStabilizerFactory::deadzoneRadius = app_data->deadzoneRadius;
+            g_message("Stabilizing algorithm: DEADZONE, sigma = %f, eventLifespan = %d, Deadzone radius = %f, Cusp "
+                      "Detection = %d, Averaging = %d",
+                      app_data->stabilizingSigma, app_data->eventLifespan, app_data->deadzoneRadius,
+                      StrokeStabilizerFactory::cuspDetection, StrokeStabilizerFactory::averagingOn);
         } else if ((string)app_data->stabilizingAlgName == "ARITHMETIC") {
-            StrokeHandler::stabilizingAlgorithm = STABILIZING_ARITHMETIC_MEAN;
-            g_message("Stabilizing algorithm: ARITHMETIC, buffer size = %d", app_data->stabilizingBufferSize);
+            StrokeStabilizerFactory::algorithm = STABILIZING_ARITHMETIC_MEAN;
+            g_message("Stabilizing algorithm: ARITHMETIC, buffer size = %d", app_data->bufferSize);
         }
     }
     return -1;
@@ -684,13 +699,19 @@ auto XournalMain::run(int argc, char** argv) -> int {
      */
     std::array stabilizingOptions = {
             GOptionEntry{"stabilizing", 0, 0, G_OPTION_ARG_STRING, &app_data.stabilizingAlgName,
-                         "Stabilizing alg: NONE (default), GIMP, ARITHMETIC", "NAME"},
+                         "Stabilizing alg: NONE (default), GIMP, ARITHMETIC, DEADZONE", "NAME"},
             GOptionEntry{"stabilizing-sigma", 0, 0, G_OPTION_ARG_DOUBLE, &app_data.stabilizingSigma,
-                         "Value of Sigma for GIMP stabilizing", "1.1"},
-            GOptionEntry{"stabilizing-buffer-size", 0, 0, G_OPTION_ARG_INT, &app_data.stabilizingBufferSize,
+                         "Value of Sigma for GIMP/DEADZONE stabilizing", "1.1"},
+            GOptionEntry{"stabilizing-buffer-size", 0, 0, G_OPTION_ARG_INT, &app_data.bufferSize,
                          "Number of events to average when stabilizing using ARITHMETIC", "20"},
-            GOptionEntry{"stabilizing-event-lifespan", 0, 0, G_OPTION_ARG_INT, &app_data.stabilizingEventLifespan,
-                         "Lifespan (in ms) of events in the buffer when using GIMP", "120"},
+            GOptionEntry{"stabilizing-event-lifespan", 0, 0, G_OPTION_ARG_INT, &app_data.eventLifespan,
+                         "Lifespan (in ms) of events in the buffer when using GIMP/DEADZONE", "120"},
+            GOptionEntry{"stabilizing-deadzone-radius", 0, 0, G_OPTION_ARG_DOUBLE, &app_data.deadzoneRadius,
+                         "Deadzone radius for DEADZONE stabilizer", "1.2"},
+            GOptionEntry{"stabilizing-no-cusp-detection", 0, 0, G_OPTION_ARG_NONE, &app_data.noCuspDetection,
+                         "Deactivates cusp detection for DEADZONE stabilizer", nullptr},
+            GOptionEntry{"stabilizing-no-averaging", 0, 0, G_OPTION_ARG_NONE, &app_data.noAveraging,
+                         "Deactivates averaging for DEADZONE stabilizer", nullptr},
             GOptionEntry{nullptr}};  // Must be terminated by a nullptr. See gtk doc
     GOptionGroup* stabilizingGroup =
             g_option_group_new("stabilizing", _("Input stabilizing options"), _("Display input stabilizing options"), nullptr, nullptr);

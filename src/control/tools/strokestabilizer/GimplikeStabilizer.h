@@ -14,10 +14,8 @@
 #include <deque>
 #include <map>
 
-#include "StrokeStabilizer.h"
+#include "Stabilizer.h"
 
-
-#define STAB_DEBUG
 
 #ifdef STAB_DEBUG
 #include <string>
@@ -26,39 +24,43 @@
 
 struct GimplikeBufferedEvent: BufferedEvent {
     GimplikeBufferedEvent() = default;
+    GimplikeBufferedEvent(const PositionInputData& pos, double velocity = 0):
+            BufferedEvent(pos.x, pos.y, pos.pressure), velocity(velocity), timestamp(pos.timestamp) {}
     GimplikeBufferedEvent(double x, double y, double pressure, double velocity, guint32 timestamp):
             BufferedEvent(x, y, pressure), velocity(velocity), timestamp(timestamp) {}
     double velocity{};
     guint32 timestamp{};
 };
 
-class GimplikeStrokeStabilizer: public StrokeStabilizer {
+class GimplikeStabilizer: public Stabilizer {
 public:
-    GimplikeStrokeStabilizer(const PositionInputData& pos);
+    GimplikeStabilizer(const PositionInputData& pos);
 #ifndef STAB_DEBUG
-    virtual ~GimplikeStrokeStabilizer() = default;
+    virtual ~GimplikeStabilizer() = default;
 #else
-    virtual ~GimplikeStrokeStabilizer() {
+    virtual ~GimplikeStabilizer() {
         string str = "Buffer length:\n";
-        for (int i = 0; i < nbInBuffer.size(); i++) {
+        for (size_t i = 0; i < nbInBuffer.size(); i++) {
             str += " " + std::to_string(nbInBuffer[i]);
         }
-        g_message(str.c_str());
+        g_message("%s", str.c_str());
     }
 #endif
 
     /**
-     * @brief Push the event to the buffer and stabilizes (in place) the coordinates of *point
+     * @brief Push the event to the buffer and compute what point(s) to paint
      * @param pos The event to be pushed
-     * @param zoom The zoom level to rescale the point's coordinates
-     * @param point A pointer to the point being stabilized
+     * @param zoom The zoom level to rescale the points' coordinates
+     *
+     * @return The number of points (segments) to be painted. The points are available in this.pointsToPaint
+     *      if negative, no stabilization has been computed.
      */
-    virtual void stabilizePointUsingEvent(const PositionInputData& pos, double zoom, Point* point);
+    virtual int feedMoveEvent(const PositionInputData& pos, double zoom);
 
     /**
      * @brief Push the event to the buffer
      */
-    virtual void pushEvent(const PositionInputData& pos);
+    virtual void pushMoveEvent(const PositionInputData& pos);
 
 private:
     /**
