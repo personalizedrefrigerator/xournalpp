@@ -35,6 +35,16 @@ void ImageExport::setQualityParameter(ExportQualityCriterion criterion, int valu
 }
 
 /**
+ * @brief Select layers to export by parsing str
+ * @param rangeStr A string parsed to get a list of layers
+ */
+void ImageExport::setLayerRange(const char* rangeStr) {
+    if (rangeStr) {
+        layerRange = std::make_unique<LayerRangeVector>(LayerRange::parse(rangeStr));
+    }
+}
+
+/**
  * @brief Get the last error message
  * @return The last error message to show to the user
  */
@@ -151,7 +161,45 @@ void ImageExport::exportImagePage(int pageId, int id, double zoomRatio, ExportGr
         PdfView::drawPage(nullptr, popplerPage, cr, zoomRatio, page->getWidth(), page->getHeight());
     }
 
-    view.drawPage(page, this->cr, true, hideBackground);
+    if (layerRange) {
+        /**
+         * page->setLayerVisible(...) is protected, so we do it by hand
+         */
+        size_t layerCount = page->getLayerCount();
+        bool visible[layerCount];
+        for (int i = 0; i < layerCount; i++) {
+            visible[i] = false;
+        }
+
+        for (LayerRangeEntry* e: *layerRange) {
+            int last = e->getLast();
+            if (last == -1 || last >= layerCount) {
+                last = layerCount - 1;
+            }
+            int first = std::max(0, e->getFirst());
+            for (int x = first; x <= last; x++) {
+                visible[x] = true;
+            }
+        }
+
+        view.initDrawing(page, this->cr, true);
+
+        if (!hideBackground) {
+            view.drawBackground();
+        }
+
+        int id = 0;
+        for (Layer* l: *page->getLayers()) {
+            if (!visible[id++]) {
+                continue;
+            }
+            view.drawLayer(this->cr, l);
+        }
+
+        view.finializeDrawing();
+    } else {
+        view.drawPage(page, this->cr, true, hideBackground);
+    }
 
     if (!freeSurface(id)) {
         // could not create this file...

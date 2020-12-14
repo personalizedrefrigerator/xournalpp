@@ -241,8 +241,8 @@ void checkForEmergencySave(Control* control) {
  *
  * @return 0 on success, -2 on failure opening the input file, -3 on export failure
  */
-auto exportImg(const char* input, const char* output, const char* range, int pngDpi, int pngWidth, int pngHeight,
-               bool noBackground) -> int {
+auto exportImg(const char* input, const char* output, const char* range, const char* layerRange, int pngDpi,
+               int pngWidth, int pngHeight, bool noBackground) -> int {
     LoadHandler loader;
 
     Document* doc = loader.loadDocument(input);
@@ -278,6 +278,8 @@ auto exportImg(const char* input, const char* output, const char* range, int png
             imgExport.setQualityParameter(EXPORT_QUALITY_HEIGHT, pngHeight);
         }
     }
+
+    imgExport.setLayerRange(layerRange);
 
     imgExport.exportGraphics(&progress);
 
@@ -368,6 +370,7 @@ struct XournalMainPrivate {
     gboolean showVersion = false;
     int openAtPageNumber = 0;  // when no --page is used, the document opens at the page specified in the metadata file
     gchar* exportRange{};
+    gchar* exportLayerRange{};
     int exportPngDpi = -1;
     int exportPngWidth = -1;
     int exportPngHeight = -1;
@@ -590,8 +593,9 @@ auto on_handle_local_options(GApplication*, GVariantDict*, XMPtr app_data) -> gi
                          app_data->exportNoBackground);
     }
     if (app_data->imgFilename && app_data->optFilename && *app_data->optFilename) {
-        return exportImg(*app_data->optFilename, app_data->imgFilename, app_data->exportRange, app_data->exportPngDpi,
-                         app_data->exportPngWidth, app_data->exportPngHeight, app_data->exportNoBackground);
+        return exportImg(*app_data->optFilename, app_data->imgFilename, app_data->exportRange,
+                         app_data->exportLayerRange, app_data->exportPngDpi, app_data->exportPngWidth,
+                         app_data->exportPngHeight, app_data->exportNoBackground);
     }
 
     // TODO Ugly fix, remove
@@ -672,6 +676,10 @@ auto XournalMain::run(int argc, char** argv) -> int {
             GOptionEntry{"export-range", 0, 0, G_OPTION_ARG_STRING, &app_data.exportRange,
                          _("Only export the pages specified by RANGE (e.g. \"2-3,5,7-\")\n"
                            "                                 No effect without -p/--create-pdf or -i/--create-img"),
+                         nullptr},
+            GOptionEntry{"export-layer-range", 0, 0, G_OPTION_ARG_STRING, &app_data.exportLayerRange,
+                         _("On exporting to images, only export the layers specified by RANGE (e.g. \"2-3,5,7-\")\n"
+                           "                                 No effect without -i/--create-img"),
                          nullptr},
             GOptionEntry{"export-png-dpi", 0, 0, G_OPTION_ARG_INT, &app_data.exportPngDpi,
                          _("Set DPI for PNG exports. Default is 300\n"
