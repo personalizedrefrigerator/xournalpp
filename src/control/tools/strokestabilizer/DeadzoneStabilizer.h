@@ -18,10 +18,6 @@
 #include "GimplikeStabilizer.h"
 
 
-#ifdef STAB_DEBUG
-#include <string>
-#endif
-
 /**
  * Extend the class if need be
  */
@@ -37,20 +33,18 @@ struct MathVect {
 
 class DeadzoneStabilizer: public Stabilizer {
 public:
-    DeadzoneStabilizer(const PositionInputData& pos);
+    DeadzoneStabilizer(double dzRadius, bool cuspDetection, bool averaging, double sigma, unsigned int lifespan);
 #ifndef STAB_DEBUG
     virtual ~DeadzoneStabilizer() = default;
 #else
-    virtual ~DeadzoneStabilizer() { showBufferLength(); }
-
-    void showBufferLength() {
-        string str = "Buffer length:\n";
-        for (size_t i = 0; i < nbInBuffer.size(); i++) {
-            str += " " + std::to_string(nbInBuffer[i]);
-        }
-        g_message("%s", str.c_str());
-    }
+    virtual ~DeadzoneStabilizer() { g_message("maxBufferSize = %d", std::max(maxBufferSize, bufferSize)); }
 #endif
+
+    /**
+     * @brief Initialize the stabilizer
+     * @param pos The position of the button down event starting the stroke
+     */
+    virtual void initialize(const PositionInputData& pos);
 
     /**
      * @brief Push the event to the buffer and stabilizes (in place) the coordinates of *point
@@ -136,7 +130,7 @@ private:
     DeadzoneBufferedEvent lastLiveEvent;
 
 #ifdef STAB_DEBUG
-    std::vector<int> nbInBuffer;
+    int maxBufferSize = 0;
     int bufferSize = 0;
 #endif
 };

@@ -2,25 +2,22 @@
 
 #include <cmath>
 
-// #include <control/XournalMain.h>
-// #include <gdk/gdk.h>
-
-// Needed?
-// #include "control/settings/Settings.h"
-// #include "config-features.h"
-
-GimplikeStabilizer::GimplikeStabilizer(const PositionInputData& pos):
-        // TODO read config
-        twoSigmaSquared(StrokeStabilizerFactory::twoSigmaSquare),
-        eventLifespan(StrokeStabilizerFactory::eventLifespan) {
-    eventBuffer.emplace_front(pos);
+GimplikeStabilizer::GimplikeStabilizer(double sigma, unsigned int lifespan):
+        twoSigmaSquared(2 * sigma * sigma), eventLifespan(lifespan) {
     g_message("Created GimplikeStabilizer with 2σ² = %f and eventLifespan = %d", twoSigmaSquared, eventLifespan);
 }
+
+void GimplikeStabilizer::initialize(const PositionInputData& pos) { eventBuffer.emplace_front(pos); }
 
 auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom) -> int {
 
     /**
-     * Compute the velocity and pushes the event
+     * First, clear the deque of points to paint
+     */
+    pointsToPaint.clear();
+
+    /**
+     * Compute the velocity and pushes the event to eventBuffer
      */
     pushMoveEvent(pos);
 
@@ -28,7 +25,7 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
      * Flush expired events
      */
 #ifdef STAB_DEBUG
-    nbInBuffer.push_back(bufferSize);
+    maxBufferSize = std::max(maxBufferSize, bufferSize);
 #endif
     if (pos.timestamp < eventLifespan) {  // Could this happen?
         g_warning("StrokeStabilizer: timestamp %d is smaller than event lifetime %d."
@@ -45,9 +42,6 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
 #endif
         }
     }
-#ifdef STAB_DEBUG
-    nbInBuffer.push_back(bufferSize);
-#endif
 
     /**
      * Average the coordinates using the gimp-like weights
@@ -83,12 +77,8 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
         }
     }
 
-    //     double x=point->x, y=point->y, z=point->z; //debug
-
-
     double averagedPressure = weightedSumOfPressures / sumOfWeights;
 
-    pointsToPaint.clear();
     /**
      * Rescale the averaged coordinates before assigning them to the point
      */

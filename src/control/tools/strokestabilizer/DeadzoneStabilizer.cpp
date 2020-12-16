@@ -1,25 +1,22 @@
 #include "DeadzoneStabilizer.h"
 
-// #include <control/XournalMain.h>
-// #include <gdk/gdk.h>
 
-// Needed?
-// #include "control/settings/Settings.h"
-// #include "config-features.h"
-
-DeadzoneStabilizer::DeadzoneStabilizer(const PositionInputData& pos):
-        // TODO read config
-        deadzoneRadius(StrokeStabilizerFactory::deadzoneRadius),
-        twoSigmaSquared(StrokeStabilizerFactory::twoSigmaSquare),
-        eventLifespan(StrokeStabilizerFactory::eventLifespan),
-        cuspDetectionOn(StrokeStabilizerFactory::cuspDetection),
-        averagingOn(StrokeStabilizerFactory::averagingOn),
-        lastPaintedEvent(pos.x, pos.y, pos.pressure),
+DeadzoneStabilizer::DeadzoneStabilizer(double dzRadius, bool cuspDetection, bool averaging, double sigma,
+                                       unsigned int lifespan):
+        deadzoneRadius(dzRadius),
+        twoSigmaSquared(2 * sigma * sigma),
+        eventLifespan(lifespan),
+        cuspDetectionOn(cuspDetection),
+        averagingOn(averaging),
         lastLiveDirection({0, 0}) {
-    eventBuffer.emplace_front(pos);
     g_message("Created DeadzoneStabilizer with 2σ² = %f, eventLifespan = %u, deadzoneRadius = %f, averaging = %d, cusp "
               "detection = %d",
               twoSigmaSquared, eventLifespan, deadzoneRadius, averagingOn, cuspDetectionOn);
+}
+
+void DeadzoneStabilizer::initialize(const PositionInputData& pos) {
+    lastPaintedEvent = {pos.x, pos.y, pos.pressure};
+    eventBuffer.emplace_front(pos);
 }
 
 
@@ -56,9 +53,8 @@ auto DeadzoneStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
          * Clear the averaging buffer so that the cusp is considered as if it was the beginning of the stroke
          */
 #ifdef STAB_DEBUG
+        maxBufferSize = std::max(maxBufferSize, bufferSize);
         bufferSize = 0;
-        showBufferLength();
-        nbInBuffer.clear();
 #endif
         eventBuffer.clear();
         eventBuffer.push_front(lastLiveEvent);
@@ -150,7 +146,7 @@ void DeadzoneStabilizer::paintAverage(double zoom) {
      * Flush expired events
      */
 #ifdef STAB_DEBUG
-    nbInBuffer.push_back(bufferSize);
+    maxBufferSize = std::max(maxBufferSize, bufferSize);
 #endif
     if (timestamp < eventLifespan) {  // Could this happen?
         g_warning("StrokeStabilizer: timestamp %d is smaller than event lifetime %d."
@@ -166,9 +162,6 @@ void DeadzoneStabilizer::paintAverage(double zoom) {
 #endif
         }
     }
-#ifdef STAB_DEBUG
-    nbInBuffer.push_back(bufferSize);
-#endif
 
     /**
      * Average the coordinates using the gimp-like weights

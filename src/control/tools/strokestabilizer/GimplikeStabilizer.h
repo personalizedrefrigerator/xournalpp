@@ -17,11 +17,6 @@
 #include "Stabilizer.h"
 
 
-#ifdef STAB_DEBUG
-#include <string>
-#endif
-
-
 struct GimplikeBufferedEvent: BufferedEvent {
     GimplikeBufferedEvent() = default;
     GimplikeBufferedEvent(const PositionInputData& pos, double velocity = 0):
@@ -34,18 +29,18 @@ struct GimplikeBufferedEvent: BufferedEvent {
 
 class GimplikeStabilizer: public Stabilizer {
 public:
-    GimplikeStabilizer(const PositionInputData& pos);
+    GimplikeStabilizer(double sigma, unsigned int lifespan);
 #ifndef STAB_DEBUG
     virtual ~GimplikeStabilizer() = default;
 #else
-    virtual ~GimplikeStabilizer() {
-        string str = "Buffer length:\n";
-        for (size_t i = 0; i < nbInBuffer.size(); i++) {
-            str += " " + std::to_string(nbInBuffer[i]);
-        }
-        g_message("%s", str.c_str());
-    }
+    virtual ~GimplikeStabilizer() { g_message("maxBufferSize = %d", std::max(maxBufferSize, bufferSize)); }
 #endif
+
+    /**
+     * @brief Initialize the stabilizer
+     * @param pos The position of the button down event starting the stroke
+     */
+    virtual void initialize(const PositionInputData& pos);
 
     /**
      * @brief Push the event to the buffer and compute what point(s) to paint
@@ -83,7 +78,7 @@ private:
     std::deque<GimplikeBufferedEvent> eventBuffer;
 
 #ifdef STAB_DEBUG
-    std::vector<int> nbInBuffer;
+    int maxBufferSize = 0;
     int bufferSize = 0;
 #endif
 };

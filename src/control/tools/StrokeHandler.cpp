@@ -25,7 +25,9 @@ StrokeHandler::StrokeHandler(XournalView* xournal, XojPageView* redrawable, cons
         snappingHandler(xournal->getControl()->getSettings()),
         surfMask(nullptr),
         crMask(nullptr),
-        reco(nullptr) {}
+        reco(nullptr) {
+    stabilizer = StrokeStabilizerFactory::getStabilizer(xournal->getControl()->getSettings());
+}
 
 StrokeHandler::~StrokeHandler() {
     destroySurface();
@@ -328,7 +330,7 @@ void StrokeHandler::onButtonPressEvent(const PositionInputData& pos) {
 
         createStroke(Point(this->buttonDownPoint.x, this->buttonDownPoint.y));
 
-        stabilizer = StrokeStabilizerFactory::getStabilizer(pos);
+        stabilizer->initialize(pos);
     }
 
     this->startStrokeTime = pos.timestamp;

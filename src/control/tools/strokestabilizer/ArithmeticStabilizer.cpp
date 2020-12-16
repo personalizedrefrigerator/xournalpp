@@ -10,9 +10,11 @@
 // #include "control/settings/Settings.h"
 // #include "config-features.h"
 
-ArithmeticStabilizer::ArithmeticStabilizer(const PositionInputData& pos):
-        // TODO read config
-        bufferLength(std::max(2, StrokeStabilizerFactory::bufferSize)) {
+ArithmeticStabilizer::ArithmeticStabilizer(size_t buffersize): bufferLength((buffersize < 2) ? 2 : buffersize) {
+    g_message("Created ArithmeticStabilizer with bufferLength = %zu", bufferLength);
+}
+
+void ArithmeticStabilizer::initialize(const PositionInputData& pos) {
     /**
      * Fill the queue with copies of our starting point
      * Is this the best way to do this? We could also aggregate the first events as they come
@@ -23,8 +25,8 @@ ArithmeticStabilizer::ArithmeticStabilizer(const PositionInputData& pos):
         // in the queue then.
         eventBuffer.emplace_front(pos.x, pos.y, pos.pressure);
     }
-    g_message("Created ArithmeticStabilizer with bufferLength = %zu", bufferLength);
 }
+
 
 int ArithmeticStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom) {
 

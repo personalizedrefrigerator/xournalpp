@@ -2,45 +2,30 @@
 
 #include <cmath>
 
-// #include <control/XournalMain.h>
-// #include <gdk/gdk.h>
-
-// Needed?
-// #include "control/settings/Settings.h"
-// #include "config-features.h"
+#include "control/settings/Settings.h"
 
 #include "ArithmeticStabilizer.h"
 #include "DeadzoneStabilizer.h"
 #include "GimplikeStabilizer.h"
 
 
-// Ugly fix. Remove!
-StabilizingAlgorithm StrokeStabilizerFactory::algorithm;
-double StrokeStabilizerFactory::deadzoneRadius;
-double StrokeStabilizerFactory::twoSigmaSquare;
-int StrokeStabilizerFactory::bufferSize;
-int StrokeStabilizerFactory::eventLifespan;
-bool StrokeStabilizerFactory::cuspDetection;
-bool StrokeStabilizerFactory::averagingOn;
+auto StrokeStabilizerFactory::getStabilizer(Settings* settings) -> std::unique_ptr<Stabilizer> {
 
-
-auto StrokeStabilizerFactory::getStabilizer(PositionInputData const& pos) -> std::unique_ptr<Stabilizer> {
-    /**
-     * TODO Figure out how Settings work
-     */
-    if (algorithm == STABILIZING_GIMP_EURISTICS) {
-        g_message("Creating GimplikeStabilizer");
-        return std::make_unique<GimplikeStabilizer>(pos);
+    StabilizingAlgorithm algorithm = settings->getStabilizerAlgorithm();
+    if (algorithm == STABILIZING_ARITHMETIC_MEAN) {
+        return std::make_unique<ArithmeticStabilizer>(settings->getStabilizerBuffersize());
     }
 
-    if (algorithm == STABILIZING_ARITHMETIC_MEAN) {
-        g_message("Creating ArithmeticStabilizer");
-        return std::make_unique<ArithmeticStabilizer>(pos);
+    if (algorithm == STABILIZING_GIMP_EURISTICS) {
+        return std::make_unique<GimplikeStabilizer>(settings->getStabilizerSigma(),
+                                                    settings->getStabilizerEventLifespan());
     }
 
     if (algorithm == STABILIZING_DEADZONE) {
-        g_message("Creating DeadzoneStabilizer");
-        return std::make_unique<DeadzoneStabilizer>(pos);
+        return std::make_unique<DeadzoneStabilizer>(
+                settings->getStabilizerDeadzoneRadius(), settings->getStabilizerCuspDetetion(),
+                settings->getStabilizerDeadzoneAveraging(), settings->getStabilizerSigma(),
+                settings->getStabilizerEventLifespan());
     }
 
     /**

@@ -17,8 +17,14 @@
 
 class ArithmeticStabilizer: public Stabilizer {
 public:
-    ArithmeticStabilizer(const PositionInputData& pos);
+    ArithmeticStabilizer(size_t buffersize);
     virtual ~ArithmeticStabilizer() = default;
+
+    /**
+     * @brief Initialize the stabilizer
+     * @param pos The position of the button down event starting the stroke
+     */
+    virtual void initialize(const PositionInputData& pos);
 
     /**
      * @brief Push the event to the buffer and stabilizes (in place) the coordinates of *point
