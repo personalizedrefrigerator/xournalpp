@@ -12,7 +12,6 @@
 #pragma once
 
 #include <deque>
-#include <map>
 
 #include "Stabilizer.h"
 
@@ -57,6 +56,12 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
+    /**
+     * @brief Pushes points to pointsToPaint to finish the stroke neatly
+     * Does nothing in the base class
+     */
+    virtual void finishStroke(const PositionInputData& pos, double zoom);
+
 private:
     /**
      * @brief The Gaussian parameter
@@ -80,5 +85,7 @@ private:
 #ifdef STAB_DEBUG
     int maxBufferSize = 0;
     int bufferSize = 0;
+
+//     void dumpBuffer();
 #endif
 };

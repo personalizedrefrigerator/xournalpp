@@ -38,6 +38,12 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
+    /**
+     * @brief Pushes points to pointsToPaint to finish the stroke neatly
+     * Does nothing in the base class
+     */
+    virtual void finishStroke(const PositionInputData& pos, double zoom);
+
 private:
     /**
      * @brief The length of the buffer

@@ -7,7 +7,15 @@ GimplikeStabilizer::GimplikeStabilizer(double sigma, unsigned int lifespan):
     g_message("Created GimplikeStabilizer with 2σ² = %f and eventLifespan = %d", twoSigmaSquared, eventLifespan);
 }
 
+#ifndef STAB_DEBUG
 void GimplikeStabilizer::initialize(const PositionInputData& pos) { eventBuffer.emplace_front(pos); }
+#else
+void GimplikeStabilizer::initialize(const PositionInputData& pos) {
+    eventBuffer.emplace_front(pos);
+    logBuffer.emplace_front(pos);
+    logBuffer.front().status = 'F';
+}
+#endif
 
 auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom) -> int {
 
@@ -20,6 +28,9 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
      * Compute the velocity and pushes the event to eventBuffer
      */
     pushMoveEvent(pos);
+#ifdef STAB_DEBUG
+    logBuffer.front().status = ' ';
+#endif
 
     /**
      * Flush expired events
@@ -54,28 +65,24 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
     double sumOfVelocities = 0;
 
     for (auto&& event: eventBuffer) {
-        sumOfVelocities += event.velocity;  // Mimicking Gimp's formula
+        /**
+         * The first weight is always 1
+         */
         weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
+        sumOfVelocities += event.velocity;
         weightedSumOfX += weight * event.x;
         weightedSumOfY += weight * event.y;
         weightedSumOfPressures += weight * event.pressure;
         sumOfWeights += weight;
     }
 
-    if (sumOfWeights == 0) {  // Sanity check. Should never happen
-        g_warning("sumOfWeights = %f, bufferSize = %zu, sumOfVelocities = %f, weight = %f, (x,y) = (%f,%f)",
-                  sumOfWeights, eventBuffer.size(), sumOfVelocities, weight, weightedSumOfX, weightedSumOfY);
-        int i = 0;
-        sumOfVelocities = 0;
-        printf("Buffer:\n id | timestamp |     x     |     y     |     v     |    sumV    |     w     |\n");
-        for (auto&& event: eventBuffer) {
-            i++;
-            sumOfVelocities += event.velocity;  // Mimicking Gimp's formula
-            weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
-            printf(" %2d | %9d | %9f | %9f | %9f | %10f | %9f |\n", i, event.timestamp, event.x, event.y,
-                   event.velocity, sumOfVelocities, weight);
-        }
-    }
+    //     if (sumOfWeights == 0) {  // Sanity check. Should never happen
+    //         g_warning("sumOfWeights = %f, bufferSize = %zu, sumOfVelocities = %f, weight = %f, (x,y) = (%f,%f)",
+    //                   sumOfWeights, eventBuffer.size(), sumOfVelocities, weight, weightedSumOfX, weightedSumOfY);
+    // #ifdef STAB_DEBUG
+    //         dumpBuffer();
+    // #endif
+    //     }
 
     double averagedPressure = weightedSumOfPressures / sumOfWeights;
 
@@ -88,9 +95,9 @@ auto GimplikeStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
 }
 
 void GimplikeStabilizer::pushMoveEvent(const PositionInputData& pos) {
-
 #ifdef STAB_DEBUG
     bufferSize++;
+    logBuffer.emplace_front(pos);
 #endif
     if (eventBuffer.empty()) {
         g_warning("GimplikeStabilizer::pushEvent: Empty buffer");
@@ -119,3 +126,55 @@ void GimplikeStabilizer::pushMoveEvent(const PositionInputData& pos) {
      */
     eventBuffer.emplace_front(pos, hypot(pos.x - lastEvent.x, pos.y - lastEvent.y) / ((double)timelaps));
 }
+
+void GimplikeStabilizer::finishStroke(const PositionInputData& pos, double zoom) {
+    /**
+     * Optimization of the equivalent:
+     * Pop every element in eventBuffer, average and push the obtained point
+     * until eventBuffer is empty
+     */
+
+    /**
+     * First, clear the deque
+     */
+    pointsToPaint.clear();
+    /**
+     * Average the coordinates using the gimp-like weights
+     */
+    double weightedSumOfX = 0;
+    double weightedSumOfY = 0;
+    double weightedSumOfPressures = 0;
+    double weight;
+    double sumOfWeights = 0;
+    double sumOfVelocities = 0;
+
+    for (auto&& event: eventBuffer) {
+        weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
+        sumOfVelocities += event.velocity;
+        weightedSumOfX += weight * event.x;
+        weightedSumOfY += weight * event.y;
+        weightedSumOfPressures += weight * event.pressure;
+        sumOfWeights += weight;
+
+        /**
+         * emplace_front ensures the first point in will be painted last
+         */
+        pointsToPaint.emplace_front(weightedSumOfX / (sumOfWeights * zoom), weightedSumOfY / (sumOfWeights * zoom),
+                                    weightedSumOfPressures / sumOfWeights);
+    }
+}
+
+// #ifdef STAB_DEBUG
+// void GimplikeStabilizer::dumpBuffer() {
+//     int i = 0;
+//     double sumOfVelocities = 0, weight = 0;
+//     printf("Buffer:\n id | timestamp |     x     |     y     |     P     |     v     |    sumV    |     w     |\n");
+//     for (auto&& event: eventBuffer) {
+//         sumOfVelocities += event.velocity;  // Mimicking Gimp's formula
+//         weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
+//         printf(" %2d | %9d | %9.5f | %9.5f | %9.6f | %9.6f | %10.6f | %9.6f |\n", ++i, event.timestamp, event.x,
+//         event.y,
+//                event.pressure, event.velocity, sumOfVelocities, weight);
+//     }
+// }
+// #endif

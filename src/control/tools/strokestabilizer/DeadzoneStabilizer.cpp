@@ -17,15 +17,37 @@ DeadzoneStabilizer::DeadzoneStabilizer(double dzRadius, bool cuspDetection, bool
 void DeadzoneStabilizer::initialize(const PositionInputData& pos) {
     lastPaintedEvent = {pos.x, pos.y, pos.pressure};
     eventBuffer.emplace_front(pos);
+#ifdef STAB_DEBUG
+    logBuffer.emplace_front(pos);
+    logBuffer.front().status = 'F';
+#endif
 }
 
 
 auto DeadzoneStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom) -> int {
 
-    //     if (eventBuffer.empty()) {
-    //         g_warning("DeadzoneStabilizer: eventBuffer is empty. This should never happen!");
-    //         eventBuffer.push_front(deadzoneBuffer.back());
-    //     }
+#ifdef STAB_DEBUG
+    logBuffer.emplace_front(pos);
+    logBuffer.front().status = ' ';
+#endif
+
+    // Should this test be moved to StrokeHandler::onMotionNotifyEvent?
+    if (pos.pressure == 0) {
+        /**
+         * Some devices sometimes emit a move event with pressure 0 when lifting the stylus tip
+         * (e.g. rolandlo's Lenovo device - what is it?)
+         * Ignore those events
+         */
+#ifdef STAB_DEBUG
+        logBuffer.front().status = 'P';
+#endif
+        return 0;
+    }
+
+    /**
+     * Record the event for finishStroke(...)
+     */
+    lastEvent = DeadzoneBufferedEvent(pos);
 
     MathVect movement = {pos.x - lastPaintedEvent.x, pos.y - lastPaintedEvent.y};
     double ratio = 1 - (deadzoneRadius / movement.norm());
@@ -35,7 +57,9 @@ auto DeadzoneStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
         /**
          * The event occurred inside the deadzone. Ignore it: return 0 (no points to draw)
          */
-        //         g_message("Deadzone event");
+#ifdef STAB_DEBUG
+        logBuffer.front().status = 'D';
+#endif
         return 0;
     }
 
@@ -55,6 +79,7 @@ auto DeadzoneStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
 #ifdef STAB_DEBUG
         maxBufferSize = std::max(maxBufferSize, bufferSize);
         bufferSize = 0;
+        logBuffer.front().status = 'C';
 #endif
         eventBuffer.clear();
         eventBuffer.push_front(lastLiveEvent);
@@ -112,7 +137,7 @@ auto DeadzoneStabilizer::feedMoveEvent(const PositionInputData& pos, double zoom
         /**
          * Update lastLiveEvent and lastLiveDirection
          */
-        lastLiveEvent = DeadzoneBufferedEvent(pos);
+        lastLiveEvent = lastEvent;
         lastLiveDirection = movement;
 
         if (averagingOn) {
@@ -212,6 +237,9 @@ void DeadzoneStabilizer::paintAverage(double zoom) {
 
 void DeadzoneStabilizer::pushMoveEvent(const PositionInputData& pos) {
     // Just ignore it.
+#ifdef STAB_DEBUG
+    logBuffer.emplace_front(pos);
+#endif
 }
 
 void DeadzoneStabilizer::emplaceInAveragingBuffer(double x, double y, double pressure, guint32 timestamp) {
@@ -236,23 +264,28 @@ void DeadzoneStabilizer::pushToAveragingBuffer(DeadzoneBufferedEvent& event) {
      * Issue: timestamps are in ms. They don't seem to be precise enough. Different events often have the same
      * timestamp...
      */
-    DeadzoneBufferedEvent& lastEvent = eventBuffer.front();
+    DeadzoneBufferedEvent& previousEvent = eventBuffer.front();
 
-    guint32 timelaps = event.timestamp - lastEvent.timestamp;
+    guint32 timelaps = event.timestamp - previousEvent.timestamp;
     if (timelaps == 0) {
-        g_warning("Oh oh: Events with same timestamps: %d\n  lastEvent.(x,y) = (%f,%f)\n"
+        g_warning("Oh oh: Events with same timestamps: %d\n  previousEvent.(x,y) = (%f,%f)\n"
                   "  newEvent.(x,y) = (%f,%f)",
-                  event.timestamp, lastEvent.x, lastEvent.y, event.x, event.y);
+                  event.timestamp, previousEvent.x, previousEvent.y, event.x, event.y);
         timelaps = 1;
     }
 
     /**
      * Update velocity
      */
-    event.velocity = hypot(event.x - lastEvent.x, event.y - lastEvent.y) / ((double)timelaps);
+    event.velocity = hypot(event.x - previousEvent.x, event.y - previousEvent.y) / ((double)timelaps);
 
     /**
      * Create and push the event
      */
     eventBuffer.push_front(event);
+}
+
+void DeadzoneStabilizer::finishStroke(const PositionInputData& pos, double zoom) {
+    pointsToPaint.clear();
+    pointsToPaint.emplace_back(lastEvent.x / zoom, lastEvent.y / zoom, lastEvent.pressure);
 }

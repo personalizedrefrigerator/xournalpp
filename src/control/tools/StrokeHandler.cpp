@@ -64,7 +64,7 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
 
     int pointCount = stroke->getPointCount();
 
-    Point currentPoint(pos.x / zoom, pos.y / zoom);
+    Point currentPoint(pos.x / zoom, pos.y / zoom, pos.pressure);
 
     // Can this test fails?
     if (pointCount > 0) {
@@ -150,6 +150,29 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
         return;
     }
 
+    /**
+     * The stabilizer may have added a gap between the end of the stroke and the input device
+     * Fill this gap.
+     */
+    double zoom = xournal->getZoom();
+    int pointCount = stroke->getPointCount();
+
+    if (pointCount > 0) {
+        Point lastPoint = stroke->getPoint(pointCount - 1);
+        stabilizer->finishStroke(pos, zoom);
+        stabilizer->dumpBuffer();
+        int i = 0;
+        for (auto&& point: stabilizer->pointsToPaint) {
+            if (validMotion(lastPoint, point)) {
+                drawSegmentTo(point);
+                lastPoint = point;
+                i++;
+            }
+        }
+        g_message("Finished with %d points", i);
+    }
+
+
     Control* control = xournal->getControl();
     Settings* settings = control->getSettings();
 
@@ -162,7 +185,6 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
         settings->getStrokeFilter(&strokeFilterIgnoreTime, &strokeFilterIgnoreLength, &strokeFilterSuccessiveTime);
         double dpmm = settings->getDisplayDpi() / 25.4;
 
-        double zoom = xournal->getZoom();
         double lengthSqrd = (pow(((pos.x / zoom) - (this->buttonDownPoint.x)), 2) +
                              pow(((pos.y / zoom) - (this->buttonDownPoint.y)), 2)) *
                             pow(xournal->getZoom(), 2);

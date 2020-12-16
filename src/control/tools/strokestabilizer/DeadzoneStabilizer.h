@@ -58,6 +58,12 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
+    /**
+     * @brief Pushes points to pointsToPaint to finish the stroke neatly
+     * Does nothing in the base class
+     */
+    virtual void finishStroke(const PositionInputData& pos, double zoom);
+
 private:
     /**
      * @brief Push an event to the secondary averaging buffer
@@ -128,6 +134,11 @@ private:
      * @brief The last event outside the deadzone
      */
     DeadzoneBufferedEvent lastLiveEvent;
+
+    /**
+     * @brief The last event (anywhere), used by finishStroke
+     */
+    DeadzoneBufferedEvent lastEvent;
 
 #ifdef STAB_DEBUG
     int maxBufferSize = 0;
