@@ -285,7 +285,4 @@ void DeadzoneStabilizer::pushToAveragingBuffer(DeadzoneBufferedEvent& event) {
     eventBuffer.push_front(event);
 }
 
-void DeadzoneStabilizer::finishStroke(const PositionInputData& pos, double zoom) {
-    pointsToPaint.clear();
-    pointsToPaint.emplace_back(lastEvent.x / zoom, lastEvent.y / zoom, lastEvent.pressure);
-}
+auto DeadzoneStabilizer::getLastEvent() -> BufferedEvent { return lastEvent; }

@@ -127,43 +127,6 @@ void GimplikeStabilizer::pushMoveEvent(const PositionInputData& pos) {
     eventBuffer.emplace_front(pos, hypot(pos.x - lastEvent.x, pos.y - lastEvent.y) / ((double)timelaps));
 }
 
-void GimplikeStabilizer::finishStroke(const PositionInputData& pos, double zoom) {
-    /**
-     * Optimization of the equivalent:
-     * Pop every element in eventBuffer, average and push the obtained point
-     * until eventBuffer is empty
-     */
-
-    /**
-     * First, clear the deque
-     */
-    pointsToPaint.clear();
-    /**
-     * Average the coordinates using the gimp-like weights
-     */
-    double weightedSumOfX = 0;
-    double weightedSumOfY = 0;
-    double weightedSumOfPressures = 0;
-    double weight;
-    double sumOfWeights = 0;
-    double sumOfVelocities = 0;
-
-    for (auto&& event: eventBuffer) {
-        weight = exp(-sumOfVelocities * sumOfVelocities / twoSigmaSquared);
-        sumOfVelocities += event.velocity;
-        weightedSumOfX += weight * event.x;
-        weightedSumOfY += weight * event.y;
-        weightedSumOfPressures += weight * event.pressure;
-        sumOfWeights += weight;
-
-        /**
-         * emplace_front ensures the first point in will be painted last
-         */
-        pointsToPaint.emplace_front(weightedSumOfX / (sumOfWeights * zoom), weightedSumOfY / (sumOfWeights * zoom),
-                                    weightedSumOfPressures / sumOfWeights);
-    }
-}
-
 // #ifdef STAB_DEBUG
 // void GimplikeStabilizer::dumpBuffer() {
 //     int i = 0;
@@ -178,3 +141,5 @@ void GimplikeStabilizer::finishStroke(const PositionInputData& pos, double zoom)
 //     }
 // }
 // #endif
+
+auto GimplikeStabilizer::getLastEvent() -> BufferedEvent { return eventBuffer.front(); }

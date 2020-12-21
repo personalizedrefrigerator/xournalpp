@@ -159,7 +159,7 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
 
     if (pointCount > 0) {
         Point lastPoint = stroke->getPoint(pointCount - 1);
-        stabilizer->finishStroke(pos, zoom);
+        stabilizer->finishStroke(zoom, stroke);
         stabilizer->dumpBuffer();
         int i = 0;
         for (auto&& point: stabilizer->pointsToPaint) {

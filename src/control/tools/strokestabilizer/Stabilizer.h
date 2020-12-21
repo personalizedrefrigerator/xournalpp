@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include <deque>
+#include <cmath>
 
 #include "control/tools/InputHandler.h"
 
@@ -20,11 +20,23 @@ class Settings;
 // Debug
 #define STAB_DEBUG
 
+#ifdef STAB_DEBUG
+#include <deque>
+#endif
+
 enum StabilizingAlgorithm {
     STABILIZING_NONE,
     STABILIZING_ARITHMETIC_MEAN,
     STABILIZING_GIMP_EURISTICS,
     STABILIZING_DEADZONE
+};
+
+struct MathVect {
+    double dx{};
+    double dy{};
+    static double scalarProduct(MathVect u, MathVect v) { return u.dx * v.dx + u.dy * v.dy; }
+    double norm() { return hypot(dx, dy); }
+    bool nonZero() { return (dx != 0) || (dy != 0); }
 };
 
 struct BufferedEvent {
@@ -112,15 +124,40 @@ public:
 
     /**
      * @brief Pushes points to pointsToPaint to finish the stroke neatly
+     * @param zoom The zoom ratio to apply to the points
+     * @param stroke A pointer to the current stroke
+     *
      * Does nothing in the base class
      */
-    virtual void finishStroke(const PositionInputData& pos, double zoom) {}
+    virtual void finishStroke(double zoom, Stroke* stroke) {}
 
     /**
      * @brief Contains the points to paint after a feedMoveEvent or a finishStroke
+     * The front should be painted first
+     *
      * Always empty in the base class
      */
-    std::deque<Point> pointsToPaint;
+    std::list<Point> pointsToPaint;
+};
+
+/**
+ * @brief An intermediate for Stabilizers in need of a stroke finisher
+ */
+class StabilizerWithFinisher: public Stabilizer {
+public:
+    /**
+     * @brief Pushes points to pointsToPaint to finish the stroke neatly
+     * @param zoom The zoom ratio to apply to the points
+     * @param stroke A pointer to the current stroke
+     */
+    virtual void finishStroke(double zoom, Stroke* stroke);
+
+private:
+    /**
+     * @brief Get the last event received by the stabilizer
+     * @return The last event received
+     */
+    virtual BufferedEvent getLastEvent() = 0;
 };
 
 namespace StrokeStabilizerFactory {

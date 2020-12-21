@@ -26,7 +26,7 @@ struct GimplikeBufferedEvent: BufferedEvent {
     guint32 timestamp{};
 };
 
-class GimplikeStabilizer: public Stabilizer {
+class GimplikeStabilizer: public StabilizerWithFinisher {
 public:
     GimplikeStabilizer(double sigma, unsigned int lifespan);
 #ifndef STAB_DEBUG
@@ -56,13 +56,13 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
-    /**
-     * @brief Pushes points to pointsToPaint to finish the stroke neatly
-     * Does nothing in the base class
-     */
-    virtual void finishStroke(const PositionInputData& pos, double zoom);
-
 private:
+    /**
+     * @brief Get the last event received by the stabilizer
+     * @return The last event received
+     */
+    virtual BufferedEvent getLastEvent();
+
     /**
      * @brief The Gaussian parameter
      */

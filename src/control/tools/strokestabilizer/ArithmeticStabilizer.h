@@ -15,7 +15,7 @@
 
 #include "Stabilizer.h"
 
-class ArithmeticStabilizer: public Stabilizer {
+class ArithmeticStabilizer: public StabilizerWithFinisher {
 public:
     ArithmeticStabilizer(size_t buffersize);
     virtual ~ArithmeticStabilizer() = default;
@@ -38,13 +38,13 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
-    /**
-     * @brief Pushes points to pointsToPaint to finish the stroke neatly
-     * Does nothing in the base class
-     */
-    virtual void finishStroke(const PositionInputData& pos, double zoom);
-
 private:
+    /**
+     * @brief Get the last event received by the stabilizer
+     * @return The last event received
+     */
+    virtual BufferedEvent getLastEvent();
+
     /**
      * @brief The length of the buffer
      */

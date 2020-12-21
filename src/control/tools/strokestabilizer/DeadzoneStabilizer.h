@@ -11,9 +11,7 @@
 
 #pragma once
 
-#include <cmath>
 #include <deque>
-#include <map>
 
 #include "GimplikeStabilizer.h"
 
@@ -23,15 +21,7 @@
  */
 using DeadzoneBufferedEvent = GimplikeBufferedEvent;
 
-struct MathVect {
-    double dx{};
-    double dy{};
-    static double scalarProduct(MathVect u, MathVect v) { return u.dx * v.dx + u.dy * v.dy; }
-    double norm() { return hypot(dx, dy); }
-    bool nonZero() { return (dx != 0) || (dy != 0); }
-};
-
-class DeadzoneStabilizer: public Stabilizer {
+class DeadzoneStabilizer: public StabilizerWithFinisher {
 public:
     DeadzoneStabilizer(double dzRadius, bool cuspDetection, bool averaging, double sigma, unsigned int lifespan);
 #ifndef STAB_DEBUG
@@ -58,13 +48,13 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
-    /**
-     * @brief Pushes points to pointsToPaint to finish the stroke neatly
-     * Does nothing in the base class
-     */
-    virtual void finishStroke(const PositionInputData& pos, double zoom);
-
 private:
+    /**
+     * @brief Get the last event received by the stabilizer
+     * @return The last event received
+     */
+    virtual BufferedEvent getLastEvent();
+
     /**
      * @brief Push an event to the secondary averaging buffer
      * @param event The event to push

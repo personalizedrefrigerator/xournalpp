@@ -83,35 +83,4 @@ void ArithmeticStabilizer::pushMoveEvent(const PositionInputData& pos) {
     eventBuffer.emplace_front(pos.x, pos.y, pos.pressure);
 }
 
-void ArithmeticStabilizer::finishStroke(const PositionInputData& pos, double zoom) {
-    /**
-     * Optimization of the equivalent:
-     * Pop every element in eventBuffer, average and push the obtained point
-     * until eventBuffer is empty
-     */
-
-    /**
-     * First, clear the deque
-     */
-    pointsToPaint.clear();
-
-    /**
-     * Average the coordinates using constant weights
-     */
-    double sumOfX = 0;
-    double sumOfY = 0;
-    double sumOfPressures = 0;
-    double nbEvents = 0;
-
-    for (auto&& event: eventBuffer) {
-        sumOfX += event.x;
-        sumOfY += event.y;
-        sumOfPressures += event.pressure;
-        nbEvents++;
-
-        /**
-         * emplace_front ensures the first point in will be painted last
-         */
-        pointsToPaint.emplace_front(sumOfX / (nbEvents * zoom), sumOfY / (nbEvents * zoom), sumOfPressures / nbEvents);
-    }
-}
+auto ArithmeticStabilizer::getLastEvent() -> BufferedEvent { return eventBuffer.front(); }
