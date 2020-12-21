@@ -137,6 +137,13 @@ auto PenInputHandler::actionStart(InputEvent const& event) -> bool {
     // Forward event to page
     if (currentPage) {
         PositionInputData pos = this->getInputDataRelativeToCurrentPage(currentPage, event);
+
+        // Tools might expect pressure data for the entire stroke (if available at all).
+        // Give a starting pressure!
+        if (this->sequenceStartPage) {
+            pos.pressure = this->inferPressureIfEnabled(pos, sequenceStartPage);
+        }
+
         return currentPage->onButtonPressEvent(pos);
     }
 
