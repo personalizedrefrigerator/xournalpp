@@ -22,10 +22,12 @@ guint32 StrokeHandler::lastStrokeTime;  // persist for next stroke
 
 StrokeHandler::StrokeHandler(XournalView* xournal, XojPageView* redrawable, const PageRef& page):
         InputHandler(xournal, redrawable, page),
-        surfMask(nullptr),
         snappingHandler(xournal->getControl()->getSettings()),
+        surfMask(nullptr),
         crMask(nullptr),
-        reco(nullptr) {}
+        reco(nullptr) {
+    stabilizer = StrokeStabilizerFactory::getStabilizer(xournal->getControl()->getSettings());
+}
 
 StrokeHandler::~StrokeHandler() {
     destroySurface();
@@ -58,24 +60,54 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
         return false;
     }
 
-    double zoom = xournal->getZoom();
-    double x = pos.x / zoom;
-    double y = pos.y / zoom;
+    double zoom = xournal->getZoom();  // Is here for debug. May be moved down
+
     int pointCount = stroke->getPointCount();
 
-    Point currentPoint(x, y);
+    Point currentPoint(pos.x / zoom, pos.y / zoom, pos.pressure);
 
+    // Can this test fails?
     if (pointCount > 0) {
         if (!validMotion(currentPoint, stroke->getPoint(pointCount - 1))) {
+            /**
+             * Add the event to the stabilizer's buffer
+             */
+            stabilizer->pushMoveEvent(pos);
             return true;
         }
     }
 
-    if (Point::NO_PRESSURE != pos.pressure && stroke->getToolType() == STROKE_TOOL_PEN) {
-        stroke->setLastPressure(pos.pressure * stroke->getWidth());
+    /**
+     * if the stabilizer is disabled, this returns -1.
+     */
+    int nbPoints = stabilizer->feedMoveEvent(pos, zoom);
+    if (nbPoints <= 0) {
+        if (nbPoints < 0) {
+            /**
+             * The stabilizer did not do anything.
+             * Use the original point and return
+             */
+            drawSegmentTo(currentPoint);
+        }
+        /**
+         * nbPoints == 0 means the stabilizer invalidated the event
+         */
+        return true;
     }
 
-    stroke->addPoint(currentPoint);
+    for (auto&& point: stabilizer->pointsToPaint) {
+        drawSegmentTo(point);
+    }
+    return true;
+}
+
+void StrokeHandler::drawSegmentTo(Point& point) {
+    // point.z contains the pressure at this point
+    if (Point::NO_PRESSURE != point.z && stroke->getToolType() == STROKE_TOOL_PEN) {
+        stroke->setLastPressure(point.z * stroke->getWidth());
+    }
+
+    stroke->addPoint(point);
 
     if ((stroke->getFill() != -1 || stroke->getLineStyle().hasDashes()) &&
         !(stroke->getFill() != -1 && stroke->getToolType() == STROKE_TOOL_HIGHLIGHTER)) {
@@ -90,13 +122,14 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
 
         view.drawStroke(crMask, stroke, 0, 1, true, true);
     } else {
-        if (pointCount > 0) {
-            Point prevPoint(stroke->getPoint(pointCount - 1));
+        int pointCount = stroke->getPointCount();
+        if (pointCount > 1) {  // Should always be true...
+            Point prevPoint(stroke->getPoint(pointCount - 2));
 
             Stroke lastSegment;
 
             lastSegment.addPoint(prevPoint);
-            lastSegment.addPoint(currentPoint);
+            lastSegment.addPoint(point);
             lastSegment.setWidth(stroke->getWidth());
 
             cairo_set_operator(crMask, CAIRO_OPERATOR_OVER);
@@ -110,8 +143,6 @@ auto StrokeHandler::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
 
     this->redrawable->repaintRect(stroke->getX() - w, stroke->getY() - w, stroke->getElementWidth() + 2 * w,
                                   stroke->getElementHeight() + 2 * w);
-
-    return true;
 }
 
 void StrokeHandler::onMotionCancelEvent() {
@@ -123,6 +154,29 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
     if (!stroke) {
         return;
     }
+
+    /**
+     * The stabilizer may have added a gap between the end of the stroke and the input device
+     * Fill this gap.
+     */
+    double zoom = xournal->getZoom();
+    int pointCount = stroke->getPointCount();
+
+    if (pointCount > 0) {
+        Point lastPoint = stroke->getPoint(pointCount - 1);
+        stabilizer->finishStroke(zoom, stroke);
+        stabilizer->dumpBuffer();
+        int i = 0;
+        for (auto&& point: stabilizer->pointsToPaint) {
+            if (validMotion(lastPoint, point)) {
+                drawSegmentTo(point);
+                lastPoint = point;
+                i++;
+            }
+        }
+        g_message("Finished with %d points", i);
+    }
+
 
     Control* control = xournal->getControl();
     Settings* settings = control->getSettings();
@@ -136,7 +190,6 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos) {
         settings->getStrokeFilter(&strokeFilterIgnoreTime, &strokeFilterIgnoreLength, &strokeFilterSuccessiveTime);
         double dpmm = settings->getDisplayDpi() / 25.4;
 
-        double zoom = xournal->getZoom();
         double lengthSqrd = (pow(((pos.x / zoom) - (this->buttonDownPoint.x)), 2) +
                              pow(((pos.y / zoom) - (this->buttonDownPoint.y)), 2)) *
                             pow(xournal->getZoom(), 2);
@@ -303,6 +356,8 @@ void StrokeHandler::onButtonPressEvent(const PositionInputData& pos) {
         this->buttonDownPoint.y = pos.y / zoom;
 
         createStroke(Point(this->buttonDownPoint.x, this->buttonDownPoint.y));
+
+        stabilizer->initialize(pos);
     }
 
     this->startStrokeTime = pos.timestamp;

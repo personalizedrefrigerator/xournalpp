@@ -173,6 +173,18 @@ void Settings::loadDefault() {
     this->restoreLineWidthEnabled = false;
 
     this->inTransaction = false;
+
+    /**
+     * Stabilizer related settings
+     */
+    this->stabilizerAlgorithm = STABILIZING_NONE;
+    this->stabilizerBuffersize = 20;
+    this->stabilizerEventLifespan = 120;  // ms
+    this->stabilizerSigma = 0.5;
+    this->stabilizerDeadzoneRadius = 1.3;
+    this->stabilizerCuspDetection = true;
+    this->stabilizerDeadzoneAveraging = false;
+    /**/
 }
 
 /**
@@ -482,7 +494,26 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->restoreLineWidthEnabled = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("preferredLocale")) == 0) {
         this->preferredLocale = reinterpret_cast<char*>(value);
+        /**
+         * Stabilizer related settings
+         */
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerAlgorithm")) == 0) {
+        this->stabilizerAlgorithm =
+                (StabilizingAlgorithm)g_ascii_strtoll(reinterpret_cast<const char*>(value), nullptr, 10);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerBuffersize")) == 0) {
+        this->stabilizerBuffersize = g_ascii_strtoull(reinterpret_cast<const char*>(value), nullptr, 10);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerEventLifespan")) == 0) {
+        this->stabilizerEventLifespan = g_ascii_strtoull(reinterpret_cast<const char*>(value), nullptr, 10);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerSigma")) == 0) {
+        this->stabilizerSigma = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerDeadzoneRadius")) == 0) {
+        this->stabilizerDeadzoneRadius = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerCuspDetection")) == 0) {
+        this->stabilizerCuspDetection = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerDeadzoneAveraging")) == 0) {
+        this->stabilizerDeadzoneAveraging = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     }
+    /**/
 
     xmlFree(name);
     xmlFree(value);
@@ -867,6 +898,18 @@ void Settings::save() {
     WRITE_BOOL_PROP(inputSystemDrawOutsideWindow);
 
     WRITE_STRING_PROP(preferredLocale);
+
+    /**
+     * Stabilizer related settings
+     */
+    WRITE_INT_PROP(stabilizerAlgorithm);
+    WRITE_UINT_PROP(stabilizerBuffersize);
+    WRITE_UINT_PROP(stabilizerEventLifespan);
+    WRITE_DOUBLE_PROP(stabilizerSigma);
+    WRITE_DOUBLE_PROP(stabilizerDeadzoneRadius);
+    WRITE_BOOL_PROP(stabilizerCuspDetection);
+    WRITE_BOOL_PROP(stabilizerDeadzoneAveraging);
+    /**/
 
     WRITE_BOOL_PROP(latexSettings.autoCheckDependencies);
     // Inline WRITE_STRING_PROP(latexSettings.globalTemplatePath) since it
@@ -1981,4 +2024,71 @@ auto SElement::getString(const string& name, string& value) -> bool {
     value = attrib.sValue;
 
     return true;
+}
+
+/**
+ * Stabilizer related getters and setters
+ */
+auto Settings::getStabilizerCuspDetetion() const -> bool { return stabilizerCuspDetection; }
+auto Settings::getStabilizerDeadzoneAveraging() const -> bool { return stabilizerDeadzoneAveraging; }
+auto Settings::getStabilizerBuffersize() const -> size_t { return stabilizerBuffersize; }
+auto Settings::getStabilizerDeadzoneRadius() const -> double { return stabilizerDeadzoneRadius; }
+auto Settings::getStabilizerSigma() const -> double { return stabilizerSigma; }
+auto Settings::getStabilizerEventLifespan() const -> unsigned int { return stabilizerEventLifespan; }
+auto Settings::getStabilizerAlgorithm() const -> StabilizingAlgorithm { return stabilizerAlgorithm; }
+
+void Settings::setStabilizerCuspDetetion(bool cuspDetection) {
+    if (stabilizerCuspDetection == cuspDetection) {
+        return;
+    }
+    stabilizerCuspDetection = cuspDetection;
+    save();
+}
+void Settings::setStabilizerDeadzoneAveraging(bool dzAveraging) {
+    if (stabilizerDeadzoneAveraging == dzAveraging) {
+        return;
+    }
+    stabilizerDeadzoneAveraging = dzAveraging;
+    save();
+}
+void Settings::setStabilizerBuffersize(size_t buffersize) {
+    if (stabilizerBuffersize == buffersize) {
+        return;
+    }
+    stabilizerBuffersize = buffersize;
+    save();
+}
+void Settings::setStabilizerDeadzoneRadius(double deadzoneRadius) {
+    if (stabilizerDeadzoneRadius == deadzoneRadius) {
+        return;
+    }
+    stabilizerDeadzoneRadius = deadzoneRadius;
+    save();
+}
+void Settings::setStabilizerSigma(double sigma) {
+    if (stabilizerSigma == sigma) {
+        return;
+    }
+    stabilizerSigma = sigma;
+    save();
+}
+void Settings::setStabilizerEventLifespan(unsigned int lifespan) {
+    if (stabilizerEventLifespan == lifespan) {
+        return;
+    }
+    stabilizerEventLifespan = lifespan;
+    save();
+}
+void Settings::setStabilizerAlgorithm(int alg) {
+    StabilizingAlgorithm algorithm;
+    if (alg > STABILIZING_DEADZONE) {
+        algorithm = STABILIZING_NONE;
+    } else {
+        algorithm = (StabilizingAlgorithm)alg;
+    }
+    if (stabilizerAlgorithm == algorithm) {
+        return;
+    }
+    stabilizerAlgorithm = algorithm;
+    save();
 }

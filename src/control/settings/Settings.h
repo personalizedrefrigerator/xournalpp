@@ -19,6 +19,7 @@
 #include <portaudio.h>
 
 #include "control/Tool.h"
+#include "control/tools/strokestabilizer/Stabilizer.h"
 #include "model/Font.h"
 
 #include "LatexSettings.h"
@@ -465,6 +466,25 @@ public:
      * Get the preferred locale
      */
     std::string getPreferredLocale() const;
+
+    /**
+     * Stabilizer related getters and setters
+     */
+    bool getStabilizerCuspDetetion() const;
+    bool getStabilizerDeadzoneAveraging() const;
+    size_t getStabilizerBuffersize() const;
+    double getStabilizerDeadzoneRadius() const;
+    double getStabilizerSigma() const;
+    unsigned int getStabilizerEventLifespan() const;
+    StabilizingAlgorithm getStabilizerAlgorithm() const;
+
+    void setStabilizerCuspDetetion(bool cuspDetection);
+    void setStabilizerDeadzoneAveraging(bool dzAveraging);
+    void setStabilizerBuffersize(size_t buffersize);
+    void setStabilizerDeadzoneRadius(double deadzoneRadius);
+    void setStabilizerSigma(double sigma);
+    void setStabilizerEventLifespan(unsigned int lifespan);
+    void setStabilizerAlgorithm(int alg);
 
 public:
     // Custom settings
@@ -922,4 +942,16 @@ private:
      * e.g. "en_US"
      */
     std::string preferredLocale;
+
+    /**
+     * Stabilizer related settings
+     */
+    bool stabilizerCuspDetection{};
+    bool stabilizerDeadzoneAveraging{};
+
+    size_t stabilizerBuffersize{};
+    double stabilizerDeadzoneRadius{};
+    double stabilizerSigma{};
+    unsigned int stabilizerEventLifespan{};
+    StabilizingAlgorithm stabilizerAlgorithm{};
 };

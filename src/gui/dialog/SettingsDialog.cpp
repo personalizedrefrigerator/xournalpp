@@ -4,6 +4,7 @@
 
 #include <config.h>
 
+#include "control/tools/strokestabilizer/Stabilizer.h"
 #include "gui/widgets/ZoomCallib.h"
 
 #include "ButtonConfigGui.h"
@@ -106,6 +107,19 @@ SettingsDialog::SettingsDialog(GladeSearchpath* gladeSearchPath, Settings* setti
                          self->customStylusIconTypeChanged();
                      }),
                      this);
+
+    g_signal_connect(get("cbStabilizerAlgorithm"), "changed",
+                     G_CALLBACK(+[](GtkComboBox* comboBox, SettingsDialog* self) {
+                         self->showStabilizerOptions((StabilizingAlgorithm)gtk_combo_box_get_active(comboBox));
+                     }),
+                     this);
+
+    g_signal_connect(get("cbStabilizerEnableAveraging"), "toggled",
+                     G_CALLBACK(+[](GtkToggleButton* toggleButton, SettingsDialog* self) {
+                         self->showStabilizerGaussianWeightOptions(gtk_toggle_button_get_active(toggleButton));
+                     }),
+                     this);
+
 
     gtk_box_pack_start(GTK_BOX(vbox), callib, false, true, 0);
     gtk_widget_show(callib);
@@ -238,6 +252,70 @@ void SettingsDialog::customStylusIconTypeChanged() {
     gtk_widget_set_sensitive(get("highlightCursorGrid"), showCursorHighlightOptions);
 }
 
+void SettingsDialog::showStabilizerOptions(StabilizingAlgorithm algorithm) {
+    switch (algorithm) {
+        case STABILIZING_ARITHMETIC_MEAN:
+            gtk_widget_show(get("lbStabilizerParameters"));
+            gtk_widget_show(get("lbStabilizerBuffersize"));
+            gtk_widget_show(get("sbStabilizerBuffersize"));
+            gtk_widget_hide(get("gridStabilizerParameters"));
+            break;
+        case STABILIZING_GIMP_EURISTICS:
+            gtk_widget_show(get("lbStabilizerParameters"));
+            gtk_widget_hide(get("lbStabilizerBuffersize"));
+            gtk_widget_hide(get("sbStabilizerBuffersize"));
+            gtk_widget_show(get("gridStabilizerParameters"));
+            showStabilizerDeadzoneOptions(false);
+            showStabilizerGaussianWeightOptions(true);
+            break;
+        case STABILIZING_DEADZONE:
+            gtk_widget_show(get("lbStabilizerParameters"));
+            gtk_widget_hide(get("lbStabilizerBuffersize"));
+            gtk_widget_hide(get("sbStabilizerBuffersize"));
+            gtk_widget_show(get("gridStabilizerParameters"));
+            showStabilizerDeadzoneOptions(true);
+            break;
+        case STABILIZING_NONE:
+        default:
+            gtk_widget_hide(get("lbStabilizerParameters"));
+            gtk_widget_hide(get("lbStabilizerBuffersize"));
+            gtk_widget_hide(get("sbStabilizerBuffersize"));
+            gtk_widget_hide(get("gridStabilizerParameters"));
+            break;
+    }
+}
+
+void SettingsDialog::showStabilizerGaussianWeightOptions(bool show) {
+    if (show) {
+        gtk_widget_show(get("lbStabilizerSigma"));
+        gtk_widget_show(get("sbStabilizerSigma"));
+        gtk_widget_show(get("sbStabilizerEventLifespan"));
+        gtk_widget_show(get("lbStabilizerEventLifespan"));
+    } else {
+        gtk_widget_hide(get("lbStabilizerSigma"));
+        gtk_widget_hide(get("sbStabilizerSigma"));
+        gtk_widget_hide(get("sbStabilizerEventLifespan"));
+        gtk_widget_hide(get("lbStabilizerEventLifespan"));
+    }
+}
+
+void SettingsDialog::showStabilizerDeadzoneOptions(bool show) {
+    GtkWidget* cbStabilizerEnableAveraging = get("cbStabilizerEnableAveraging");
+    if (show) {
+        gtk_widget_show(get("lbStabilizerDeadzoneRadius"));
+        gtk_widget_show(get("sbStabilizerDeadzoneRadius"));
+        gtk_widget_show(get("cbStabilizerEnableCuspDetection"));
+        gtk_widget_show(cbStabilizerEnableAveraging);
+        showStabilizerGaussianWeightOptions(
+                gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cbStabilizerEnableAveraging)));
+    } else {
+        gtk_widget_hide(get("lbStabilizerDeadzoneRadius"));
+        gtk_widget_hide(get("sbStabilizerDeadzoneRadius"));
+        gtk_widget_hide(get("cbStabilizerEnableCuspDetection"));
+        gtk_widget_hide(cbStabilizerEnableAveraging);
+    }
+}
+
 void SettingsDialog::load() {
     loadCheckbox("cbSettingPresureSensitivity", settings->isPressureSensitivity());
     loadCheckbox("cbEnableZoomGestures", settings->isZoomGesturesEnabled());
@@ -266,6 +344,26 @@ void SettingsDialog::load() {
     loadCheckbox("cbInputSystemTPCButton", settings->getInputSystemTPCButtonEnabled());
     loadCheckbox("cbInputSystemDrawOutsideWindow", settings->getInputSystemDrawOutsideWindowEnabled());
 
+
+    /**
+     * Stabilizer related settings
+     */
+    loadCheckbox("cbStabilizerEnableCuspDetection", settings->getStabilizerCuspDetetion());
+    loadCheckbox("cbStabilizerEnableAveraging", settings->getStabilizerDeadzoneAveraging());
+
+    GtkWidget* sbStabilizerBuffersize = get("sbStabilizerBuffersize");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(sbStabilizerBuffersize), settings->getStabilizerBuffersize());
+    GtkWidget* sbStabilizerDeadzoneRadius = get("sbStabilizerDeadzoneRadius");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(sbStabilizerDeadzoneRadius), settings->getStabilizerDeadzoneRadius());
+    GtkWidget* sbStabilizerSigma = get("sbStabilizerSigma");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(sbStabilizerSigma), settings->getStabilizerSigma());
+    GtkWidget* sbStabilizerEventLifespan = get("sbStabilizerEventLifespan");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(sbStabilizerEventLifespan), settings->getStabilizerEventLifespan());
+
+    GtkComboBox* cbStabilizerAlgorithm = GTK_COMBO_BOX(get("cbStabilizerAlgorithm"));
+    gtk_combo_box_set_active(cbStabilizerAlgorithm, settings->getStabilizerAlgorithm());
+    showStabilizerOptions(settings->getStabilizerAlgorithm());
+    /***********/
 
     GtkWidget* txtDefaultSaveName = get("txtDefaultSaveName");
     string txt = settings->getDefaultSaveName();
@@ -553,6 +651,16 @@ void SettingsDialog::save() {
     settings->setInputSystemTPCButtonEnabled(getCheckbox("cbInputSystemTPCButton"));
     settings->setInputSystemDrawOutsideWindowEnabled(getCheckbox("cbInputSystemDrawOutsideWindow"));
     settings->setScrollbarFadeoutDisabled(getCheckbox("cbDisableScrollbarFadeout"));
+
+    settings->setStabilizerAlgorithm(gtk_combo_box_get_active(GTK_COMBO_BOX(get("cbStabilizerAlgorithm"))));
+    settings->setStabilizerBuffersize(gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(get("sbStabilizerBuffersize"))));
+    settings->setStabilizerEventLifespan(
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(get("sbStabilizerEventLifespan"))));
+    settings->setStabilizerDeadzoneRadius(
+            gtk_spin_button_get_value(GTK_SPIN_BUTTON(get("sbStabilizerDeadzoneRadius"))));
+    settings->setStabilizerSigma(gtk_spin_button_get_value(GTK_SPIN_BUTTON(get("sbStabilizerSigma"))));
+    settings->setStabilizerCuspDetetion(getCheckbox("cbStabilizerEnableCuspDetection"));
+    settings->setStabilizerDeadzoneAveraging(getCheckbox("cbStabilizerEnableAveraging"));
 
     auto scrollbarHideType =
             static_cast<std::make_unsigned<std::underlying_type<ScrollbarHideType>::type>::type>(SCROLLBAR_HIDE_NONE);

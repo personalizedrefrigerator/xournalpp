@@ -59,6 +59,10 @@ private:
 
     void initLanguageSettings();
 
+    void showStabilizerOptions(StabilizingAlgorithm algorithm);
+    void showStabilizerGaussianWeightOptions(bool show);
+    void showStabilizerDeadzoneOptions(bool show);
+
 private:
     Settings* settings = nullptr;
     Control* control = nullptr;
