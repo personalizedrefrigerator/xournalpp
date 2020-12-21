@@ -137,6 +137,8 @@ auto PenInputHandler::actionStart(InputEvent const& event) -> bool {
     // Forward event to page
     if (currentPage) {
         PositionInputData pos = this->getInputDataRelativeToCurrentPage(currentPage, event);
+        pos.pressure = this->inferPressureIfEnabled(pos, currentPage);
+
         return currentPage->onButtonPressEvent(pos);
     }
 
@@ -305,6 +307,8 @@ auto PenInputHandler::actionEnd(InputEvent const& event) -> bool {
     // Selections and single-page elements will always work on one page so we need to handle them differently
     if (this->sequenceStartPage && toolHandler->isSinglePageTool()) {
         PositionInputData pos = getInputDataRelativeToCurrentPage(this->sequenceStartPage, event);
+        pos.pressure = this->inferPressureIfEnabled(pos, this->sequenceStartPage);
+
         this->sequenceStartPage->onButtonReleaseEvent(pos);
     } else {
         // Relay the event to the page
@@ -323,6 +327,8 @@ auto PenInputHandler::actionEnd(InputEvent const& event) -> bool {
 
         if (currentPage) {
             PositionInputData pos = getInputDataRelativeToCurrentPage(currentPage, event);
+            pos.pressure = this->inferPressureIfEnabled(pos, currentPage);
+
             currentPage->onButtonReleaseEvent(pos);
         }
     }
