@@ -38,6 +38,12 @@ public:
      */
     virtual void pushMoveEvent(const PositionInputData& pos);
 
+#ifdef STAB_DEBUG
+    virtual auto getInfo() -> string {
+        return "Arithmetic stabilizer with bufferLength " + std::to_string(bufferLength);
+    }
+#endif
+
 private:
     /**
      * @brief Get the last event received by the stabilizer

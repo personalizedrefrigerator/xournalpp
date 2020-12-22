@@ -33,6 +33,12 @@ public:
     virtual ~GimplikeStabilizer() = default;
 #else
     virtual ~GimplikeStabilizer() { g_message("maxBufferSize = %d", std::max(maxBufferSize, bufferSize)); }
+
+    virtual auto getInfo() -> string {
+        return "Velocity-based gaussian weight stabilizer with "
+               "2σ² = " +
+               std::to_string(twoSigmaSquared) + ", eventLifespan = " + std::to_string(eventLifespan);
+    }
 #endif
 
     /**
