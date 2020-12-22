@@ -135,7 +135,7 @@ void Settings::loadDefault() {
 
     this->touchZoomStartThreshold = 0.0;
 
-    this->pageRerenderThreshold = 1.0;
+    this->pageRerenderThreshold = 5.0;
     this->pdfPageCacheSize = 10;
 
     this->selectionBorderColor = 0xff0000U;  // red
