@@ -143,7 +143,7 @@ public:
 };
 
 /**
- * @brief An intermediate for Stabilizers in need of a stroke finisher
+ * @brief An intermediate class for Stabilizers in need of a stroke finisher
  */
 class StabilizerWithFinisher: public Stabilizer {
 public:
