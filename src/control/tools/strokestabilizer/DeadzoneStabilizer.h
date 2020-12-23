@@ -28,6 +28,16 @@ public:
     virtual ~DeadzoneStabilizer() = default;
 #else
     virtual ~DeadzoneStabilizer() { g_message("maxBufferSize = %d", std::max(maxBufferSize, bufferSize)); }
+
+    virtual auto getInfo() -> string {
+        return "Deadzone stabilizer with "
+               "deadzoneRadius = " +
+               std::to_string(deadzoneRadius) + ", cusp detection = " + (cuspDetectionOn ? "on" : "off") +
+               ", averaging = " +
+               (!averagingOn ? "off" :
+                               "on: 2σ² = " + std::to_string(twoSigmaSquared) +
+                                       ", eventLifespan = " + std::to_string(eventLifespan));
+    }
 #endif
 
     /**

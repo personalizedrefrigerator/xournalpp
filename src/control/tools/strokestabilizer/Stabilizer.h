@@ -52,11 +52,11 @@ struct LogEvent: BufferedEvent {
     char status = 'I';
     guint32 ts;
     LogEvent(const PositionInputData& pos): BufferedEvent(pos.x, pos.y, pos.pressure), ts(pos.timestamp) {}
-    static void bufferDumpHeader() {
-        printf("Buffer:\n id | timestamp | status |     x     |     y     |     P     |\n");
+    static void bufferDumpHeader(string name) {
+        printf("Buffer: %s\n  id | timestamp  | status |     x      |     y      |     P     |\n", name.c_str());
     }
     virtual void bufferDump(int i) {
-        printf(" %2d | %9d |    %c   | %9.5f | %9.5f | %9.6f |\n", i, ts, status, x, y, pressure);
+        printf(" %3d | %10d |    %c   | %10.5f | %10.5f | %9.6f |\n", i, ts, status, x, y, pressure);
     }
 };
 #endif
@@ -114,12 +114,14 @@ public:
 
     void dumpBuffer() {
         int i = 0;
-        LogEvent::bufferDumpHeader();
+        LogEvent::bufferDumpHeader(getInfo());
         for (auto&& event: logBuffer) {
             event.bufferDump(++i);
         }
     }
     std::deque<LogEvent> logBuffer;
+
+    virtual auto getInfo() -> string { return "No stabilizer"; }
 #endif
 
     /**
@@ -141,7 +143,7 @@ public:
 };
 
 /**
- * @brief An intermediate for Stabilizers in need of a stroke finisher
+ * @brief An intermediate class for Stabilizers in need of a stroke finisher
  */
 class StabilizerWithFinisher: public Stabilizer {
 public:

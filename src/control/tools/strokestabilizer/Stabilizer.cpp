@@ -91,7 +91,7 @@ void StabilizerWithFinisher::finishStroke(double zoom, Stroke* stroke) {
     /**
      * TODO Add support for spline segments in Stroke and replace the point sequence by a single spline segment
      */
-    pointsToPaint = spline.toPointSequence();
+    pointsToPaint = spline.toPointSequence(true);
     pointsToPaint.push_back(C);
     pointsToPaint.pop_front();
 }
