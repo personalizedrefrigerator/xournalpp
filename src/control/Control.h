@@ -156,6 +156,12 @@ public:
     void setViewLayoutR2L(bool r2l);
     void setViewLayoutB2T(bool b2t);
 
+    /**
+     * @brief Ask the user how to simply/flatten the current selection/the contents
+     *  of the page/layer.
+     */
+    void reduceContents();
+
     void manageToolbars();
     void customizeToolbars();
     void setFullscreen(bool enabled);

@@ -761,6 +761,10 @@ void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* even
         case ACTION_MANAGE_TOOLBAR:
             manageToolbars();
             break;
+        
+        case ACTION_REDUCE_CONTENTS:
+            reduceContents();
+            break;
 
         case ACTION_CUSTOMIZE_TOOLBAR:
             customizeToolbars();
@@ -1012,6 +1016,10 @@ auto Control::firePageSelected(const PageRef& page) -> size_t {
 }
 
 void Control::firePageSelected(size_t page) { DocumentHandler::firePageSelected(page); }
+
+void Control::reduceContents() {
+    g_warning("Not implemented.");
+}
 
 void Control::manageToolbars() {
     ToolbarManageDialog dlg(this->gladeSearchPath, this->win->getToolbarModel());
