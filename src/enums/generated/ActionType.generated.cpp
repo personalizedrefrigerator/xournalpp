@@ -527,9 +527,9 @@ ActionType ActionType_fromString(const string& value)
 		return ACTION_FULLSCREEN;
 	}
 
-	if (value == "ACTION_REDUCE_CONTENTS")
+	if (value == "ACTION_TRANSFORM_REGION")
 	{
-		return ACTION_REDUCE_CONTENTS;
+		return ACTION_TRANSFORM_REGION;
 	}
 
 	if (value == "ACTION_VIEW_PAIRED_PAGES")
@@ -1255,9 +1255,9 @@ string ActionType_toString(ActionType value)
 		return "ACTION_FULLSCREEN";
 	}
 
-	if (value == ACTION_REDUCE_CONTENTS)
+	if (value == ACTION_TRANSFORM_REGION)
 	{
-		return "ACTION_REDUCE_CONTENTS";
+		return "ACTION_TRANSFORM_REGION";
 	}
 
 	if (value == ACTION_VIEW_PAIRED_PAGES)

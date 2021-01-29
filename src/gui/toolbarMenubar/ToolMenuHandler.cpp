@@ -387,7 +387,7 @@ void ToolMenuHandler::initToolItems() {
     tbInsertNewPage->setPopupMenu(this->newPageType->getMenu());
 
     ADD_CUSTOM_ITEM("DELETE_CURRENT_PAGE", ACTION_DELETE_PAGE, "delPage", _("Delete current page"));
-    ADD_STOCK_ITEM("REDUCE_CONTENTS", ACTION_REDUCE_CONTENTS, "convert", _("Flatten"));
+    ADD_STOCK_ITEM("REDUCE_CONTENTS", ACTION_TRANSFORM_REGION, "convert", _("Flatten"));
 
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(gui->get("menuJournalPaperBackground")),
                               pageBackgroundChangeController->getMenu());

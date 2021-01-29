@@ -18,6 +18,7 @@
 #include "gui/dialog/SettingsDialog.h"
 #include "gui/dialog/ToolbarManageDialog.h"
 #include "gui/dialog/toolbarCustomize/ToolbarDragDropHandler.h"
+#include "gui/dialog/TransformSelectionDialog.h"
 #include "gui/inputdevices/HandRecognition.h"
 #include "gui/toolbarMenubar/model/ToolbarData.h"
 #include "gui/toolbarMenubar/model/ToolbarModel.h"
@@ -359,7 +360,7 @@ void Control::updatePageNumbers(size_t page, size_t pdfPage) {
     fireEnableAction(ACTION_GOTO_LAST, current < count - 1);
     fireEnableAction(ACTION_GOTO_NEXT_ANNOTATED_PAGE, current < count - 1);
 }
-
+#include <iostream>
 void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* event, GtkMenuItem* menuitem,
                               GtkToolButton* toolbutton, bool enabled) {
     if (layerController->actionPerformed(type)) {
@@ -762,8 +763,8 @@ void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* even
             manageToolbars();
             break;
         
-        case ACTION_REDUCE_CONTENTS:
-            reduceContents();
+        case ACTION_TRANSFORM_REGION:
+            transformRegion();
             break;
 
         case ACTION_CUSTOMIZE_TOOLBAR:
@@ -1017,8 +1018,9 @@ auto Control::firePageSelected(const PageRef& page) -> size_t {
 
 void Control::firePageSelected(size_t page) { DocumentHandler::firePageSelected(page); }
 
-void Control::reduceContents() {
-    g_warning("Not implemented.");
+void Control::transformRegion() {
+    TransformSelectionDialog dlg { this->gladeSearchPath };
+    dlg.show(GTK_WINDOW(this->win->getWindow()));
 }
 
 void Control::manageToolbars() {

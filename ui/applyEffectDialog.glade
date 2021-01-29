@@ -9,11 +9,13 @@
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
-  <object class="GtkDialog" id="DialogFlattenSimplify">
+  <object class="GtkDialog" id="applyTransformationDialog">
     <property name="name">DialogManageToolbar</property>
     <property name="can-focus">False</property>
     <property name="border-width">5</property>
     <property name="title" translatable="yes">Manage Toolbar</property>
+    <property name="default-width">500</property>
+    <property name="default-height">500</property>
     <property name="icon">pixmaps/com.github.xournalpp.xournalpp.svg</property>
     <property name="type-hint">normal</property>
     <child internal-child="vbox">
@@ -29,8 +31,8 @@
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
-              <object class="GtkButton" id="buttonClose">
-                <property name="label">gtk-close</property>
+              <object class="GtkButton" id="buttonCancel">
+                <property name="label">gtk-cancel</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
@@ -43,12 +45,13 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="buttonApply">
-                <property name="label">gtk-apply</property>
+              <object class="GtkButton" id="buttonOk">
+                <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
+                <property name="image-position">right</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -83,7 +86,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="halign">start</property>
-                        <property name="label" translatable="yes">Reduce Content</property>
+                        <property name="label" translatable="yes">Apply Effect</property>
                         <child internal-child="accessible">
                           <object class="AtkObject">
                             <property name="AtkObject::accessible-role" translatable="yes">label</property>
@@ -116,7 +119,7 @@
                           <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkComboBoxText">
+                          <object class="GtkComboBoxText" id="selTarget">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <items>
@@ -159,12 +162,9 @@
                           <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkComboBoxText">
+                          <object class="GtkComboBoxText" id="selOperation">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <items>
-                              <item translatable="yes">Convert to PNG</item>
-                            </items>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -180,35 +180,40 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox" id="boxDPIOptions">
+                      <object class="GtkFrame">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
                         <child>
+                          <object class="GtkAlignment">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="left-padding">12</property>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="orientation">vertical</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="label" translatable="yes">Image Resolution (pixels/cm)</property>
+                            <property name="label" translatable="yes">Options</property>
                           </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <object class="GtkSpinButton">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="adjustment">adjustmentDPISettings</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">2</property>
-                          </packing>
                         </child>
                       </object>
                       <packing>
@@ -231,7 +236,7 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">buttonClose</action-widget>
+      <action-widget response="0">buttonCancel</action-widget>
     </action-widgets>
   </object>
 </interface>

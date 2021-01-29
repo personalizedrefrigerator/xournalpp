@@ -157,10 +157,12 @@ public:
     void setViewLayoutB2T(bool b2t);
 
     /**
-     * @brief Ask the user how to simply/flatten the current selection/the contents
-     *  of the page/layer.
+     * @brief Ask the user how the selected region should
+     *  be transformed.
+     * 
+     * E.g. Convert to PNG.
      */
-    void reduceContents();
+    void transformRegion();
 
     void manageToolbars();
     void customizeToolbars();
