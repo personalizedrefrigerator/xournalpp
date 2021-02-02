@@ -35,6 +35,7 @@ public:
     virtual bool isLoaded() = 0;
 
     virtual XojPdfPageSPtr getPage(size_t page) = 0;
+
     virtual size_t getPageCount() = 0;
     virtual XojPdfBookmarkIterator* getContentsIter() = 0;
 

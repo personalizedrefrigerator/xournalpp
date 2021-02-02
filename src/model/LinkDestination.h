@@ -47,19 +47,25 @@ public:
     void setName(string name);
     string getName();
 
+    bool isURI() const;
+    string getURI() const;
+    void setURI(string uri);
+
 private:
-    size_t page;
-    bool expand;
+    size_t _page;
 
-    double left;
-    double top;
-    double zoom;
+    bool _changeLeft;
+    bool _changeZoom;
+    bool _changeTop;
 
-    bool changeLeft;
-    bool changeZoom;
-    bool changeTop;
+    double _zoom;
+    double _left;
+    double _top;
 
-    string name;
+    bool _expand;
+    bool _isURI;
+
+    string _name, _uri;
 };
 
 struct _LinkDest {

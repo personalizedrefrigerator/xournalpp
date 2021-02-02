@@ -83,8 +83,8 @@ auto PopplerGlibDocument::getPage(size_t page) -> XojPdfPageSPtr {
         return nullptr;
     }
 
-    PopplerPage* pg = poppler_document_get_page(document, page);
-    XojPdfPageSPtr pageptr = std::make_shared<PopplerGlibPage>(pg);
+    PopplerPage* pg = poppler_document_get_page(document, static_cast<int>(page));
+    XojPdfPageSPtr pageptr = std::make_shared<PopplerGlibPage>(pg, document);
     g_object_unref(pg);
 
     return pageptr;

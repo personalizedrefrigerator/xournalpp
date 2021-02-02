@@ -11,16 +11,16 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+
+#include <poppler.h>
 
 #include "model/LinkDestination.h"
 #include "pdf/base/XojPdfAction.h"
 
 #include "XournalType.h"
-using std::string;
-
-#include <poppler.h>
 
 class LinkDestination;
 
@@ -31,13 +31,15 @@ public:
     virtual ~PopplerGlibAction();
 
 public:
-    virtual XojLinkDest* getDestination();
-    virtual string getTitle();
+    virtual std::shared_ptr<const LinkDestination> getDestination() override;
+    virtual std::string getTitle() override;
 
 private:
-    void linkFromDest(LinkDestination* link, PopplerDest* pDest);
+    virtual std::shared_ptr<const LinkDestination> getDestination(PopplerAction* action);
+    void linkFromDest(LinkDestination& link, PopplerDest* pDest);
 
 private:
-    PopplerAction* action;
     PopplerDocument* document;
+    std::shared_ptr<const LinkDestination> destination;
+    std::string title;
 };

@@ -84,7 +84,7 @@ static void crashHandler(int sig) {
     fp << FORMAT_STR("Error: signal {1}") % sig;
     fp << "\n";
 
-    messages = backtrace_symbols(array, size);
+    messages = backtrace_symbols(array, static_cast<int>(size));
 
     for (size_t i = 0; i < size; i++) {
         fp << FORMAT_STR("[bt]: ({1}) {2}") % i % messages[i];

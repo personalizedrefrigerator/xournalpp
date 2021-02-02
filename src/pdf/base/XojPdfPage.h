@@ -17,7 +17,10 @@
 
 #include <cairo/cairo.h>
 
+#include "XojPdfAction.h"
 #include "XournalType.h"
+
+class XojPdfLink;
 
 
 class XojPdfRectangle {
@@ -37,11 +40,11 @@ public:
     XojPdfPage();
     virtual ~XojPdfPage();
 
-    using Link = std::pair<XojPdfRectangle, GUri*>;
+    using Link = std::pair<XojPdfRectangle, std::unique_ptr<XojPdfAction>>;
 
 public:
-    virtual double getWidth() = 0;
-    virtual double getHeight() = 0;
+    virtual double getWidth() const = 0;
+    virtual double getHeight() const = 0;
 
     virtual void render(cairo_t* cr, bool forPrinting = false) = 0;
 

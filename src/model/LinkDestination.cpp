@@ -36,52 +36,60 @@ static void link_dest_class_init(XojLinkDestClass* linkClass) {
 
 auto link_dest_new() -> XojLinkDest* { return LINK_DEST(g_object_new(TYPE_LINK_DEST, nullptr)); }
 
-LinkDestination::LinkDestination() {
-    this->page = npos;
-    this->changeLeft = false;
-    this->changeZoom = false;
-    this->changeTop = false;
-    this->zoom = 0;
-    this->left = 0;
-    this->top = 0;
-    this->expand = false;
-}
+LinkDestination::LinkDestination():
+        _page(npos),
+        _changeLeft(false),
+        _changeZoom(false),
+        _changeTop(false),
+        _zoom(0),
+        _left(0),
+        _top(0),
+        _expand(false),
+        _isURI(false),
+        _name(""),
+        _uri("") {}
 
 LinkDestination::~LinkDestination() = default;
 
-auto LinkDestination::getPdfPage() const -> size_t { return this->page; }
+auto LinkDestination::getPdfPage() const -> size_t { return _page; }
 
-void LinkDestination::setPdfPage(size_t page) { this->page = page; }
+void LinkDestination::setPdfPage(size_t page) { _page = page; }
 
-void LinkDestination::setExpand(bool expand) { this->expand = expand; }
+void LinkDestination::setExpand(bool expand) { _expand = expand; }
 
-auto LinkDestination::getExpand() const -> bool { return this->expand; }
+auto LinkDestination::getExpand() const -> bool { return _expand; }
 
-auto LinkDestination::shouldChangeLeft() const -> bool { return changeLeft; }
+auto LinkDestination::shouldChangeLeft() const -> bool { return _changeLeft; }
 
-auto LinkDestination::shouldChangeTop() const -> bool { return changeTop; }
+auto LinkDestination::shouldChangeTop() const -> bool { return _changeTop; }
 
-auto LinkDestination::getZoom() const -> double { return zoom; }
+auto LinkDestination::getZoom() const -> double { return _zoom; }
 
-auto LinkDestination::getLeft() const -> double { return left; }
+auto LinkDestination::getLeft() const -> double { return _left; }
 
-auto LinkDestination::getTop() const -> double { return top; }
+auto LinkDestination::getTop() const -> double { return _top; }
 
 void LinkDestination::setChangeLeft(double left) {
-    this->left = left;
-    this->changeLeft = true;
+    _left = left;
+    _changeLeft = true;
 }
 
 void LinkDestination::setChangeZoom(double zoom) {
-    this->zoom = zoom;
-    this->changeZoom = true;
+    _zoom = zoom;
+    _changeZoom = true;
 }
 
 void LinkDestination::setChangeTop(double top) {
-    this->top = top;
-    this->changeTop = true;
+    _top = top;
+    _changeTop = true;
 }
 
-void LinkDestination::setName(string name) { this->name = std::move(name); }
+void LinkDestination::setName(string name) { _name = std::move(name); }
+auto LinkDestination::getName() -> string { return _name; }
 
-auto LinkDestination::getName() -> string { return this->name; }
+void LinkDestination::setURI(string uri) {
+    _uri = std::move(uri);
+    _isURI = true;
+}
+auto LinkDestination::getURI() const -> string { return _uri; }
+bool LinkDestination::isURI() const { return _isURI; }

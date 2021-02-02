@@ -31,6 +31,8 @@ class Text;
 class TextEditor;
 class VerticalToolHandler;
 class XournalView;
+class XojPdfRectangle;
+class XojPdfPage;
 
 class XojPageView: public Redrawable, public PageListener {
 public:
@@ -176,6 +178,26 @@ private:
 
     void drawLoadingPage(cairo_t* cr);
 
+    /**
+     * @brief Make and display a popover dialog near the given location.
+     *
+     * @param rect specifies the location of the dialog.
+     * @param child is added to the dialog before displaying.
+     * @returns a pointer to the popover dialog.
+     */
+    GtkWidget* makePopover(const XojPdfRectangle& rect, GtkWidget* child);
+
+    /**
+     * @brief Display a popover with link-related actions, if one
+     *  is at a given location on the page.
+     *
+     * @param page is the current page
+     * @param targetX
+     * @param targetY the link must contain (targetX, targetY)
+     * @returns true iff a URI link exists near/at (targetX, targetY) => a popover was shown
+     */
+    bool displayLinkPopover(std::shared_ptr<XojPdfPage> page, double targetX, double targetY);
+
     void setX(int x);
     void setY(int y);
 
@@ -223,7 +245,7 @@ private:
     /**
      * Unixtimestam when the page was last time in the visible area
      */
-    int lastVisibleTime = -1;
+    long int lastVisibleTime = -1;
 
     GMutex repaintRectMutex{};
     vector<Rectangle<double>> rerenderRects;

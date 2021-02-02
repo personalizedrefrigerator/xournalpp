@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,18 +31,19 @@ public:
 public:
     XojPdfDocument& operator=(const XojPdfDocument& doc);
     bool operator==(XojPdfDocument& doc);
-    void assign(XojPdfDocumentInterface* doc);
-    bool equals(XojPdfDocumentInterface* doc);
+    void assign(XojPdfDocumentInterface* doc) override;
+    bool equals(XojPdfDocumentInterface* doc) override;
 
 public:
-    bool save(fs::path const& file, GError** error);
-    bool load(fs::path const& file, string password, GError** error);
-    bool load(gpointer data, gsize length, string password, GError** error);
-    bool isLoaded();
+    bool save(fs::path const& file, GError** error) override;
+    bool load(fs::path const& file, string password, GError** error) override;
+    bool load(gpointer data, gsize length, string password, GError** error) override;
+    bool isLoaded() override;
 
-    XojPdfPageSPtr getPage(size_t page);
-    size_t getPageCount();
-    XojPdfBookmarkIterator* getContentsIter();
+    XojPdfPageSPtr getPage(size_t page) override;
+
+    size_t getPageCount() override;
+    XojPdfBookmarkIterator* getContentsIter() override;
 
 private:
     XojPdfDocumentInterface* doc;

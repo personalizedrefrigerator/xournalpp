@@ -18,23 +18,24 @@
 
 class PopplerGlibPage: public XojPdfPage {
 public:
-    PopplerGlibPage(PopplerPage* page);
+    PopplerGlibPage(PopplerPage* page, PopplerDocument* doc);
     PopplerGlibPage(const PopplerGlibPage& other);
     virtual ~PopplerGlibPage();
     PopplerGlibPage& operator=(const PopplerGlibPage& other);
 
 public:
-    virtual double getWidth();
-    virtual double getHeight();
+    virtual double getWidth() const override;
+    virtual double getHeight() const override;
 
-    virtual void render(cairo_t* cr, bool forPrinting = false);  // NOLINT(google-default-arguments)
+    virtual void render(cairo_t* cr, bool forPrinting = false) override;  // NOLINT(google-default-arguments)
 
-    virtual vector<XojPdfRectangle> findText(string& text);
+    virtual vector<XojPdfRectangle> findText(string& text) override;
 
     auto getLinks() -> std::vector<Link> override;
 
-    virtual int getPageId();
+    virtual int getPageId() override;
 
 private:
     PopplerPage* page;
+    PopplerDocument* document;
 };
