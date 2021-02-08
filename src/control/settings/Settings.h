@@ -166,12 +166,6 @@ public:
     bool isDarkTheme() const;
 
     /**
-     * User-specified theme override.
-     */
-    void setThemeName(const std::string& theme);
-    std::string getThemeName() const;
-
-    /**
      * The last saved path
      */
     void setLastSavePath(fs::path p);
@@ -595,12 +589,6 @@ private:
      * (white icons)
      */
     bool darkTheme{};
-
-    /**
-     * The name of a theme we'll override the default
-     * with, or an empty string, if we're using the default theme.
-     */
-    std::string overrideThemeName{};
 
     /**
      * If the menu bar is visible on startup

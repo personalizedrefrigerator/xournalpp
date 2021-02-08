@@ -82,7 +82,6 @@ void Settings::loadDefault() {
     this->cursorHighlightBorderColor = 0x800000FF;  // Blue with 50% opacity
     this->cursorHighlightBorderWidth = 0.0;
     this->darkTheme = false;
-    this->overrideThemeName = ""; // No theme override
     this->scrollbarHideType = SCROLLBAR_HIDE_NONE;
     this->disableScrollbarFadeout = false;
 
@@ -376,8 +375,6 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->cursorHighlightBorderWidth = g_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("darkTheme")) == 0) {
         this->darkTheme = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
-    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("overrideThemeName")) == 0) {
-        this->overrideThemeName = reinterpret_cast<const char*>(value);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("defaultSaveName")) == 0) {
         this->defaultSaveName = reinterpret_cast<const char*>(value);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("pluginEnabled")) == 0) {
@@ -804,12 +801,7 @@ void Settings::save() {
     WRITE_UINT_PROP(cursorHighlightBorderColor);
     WRITE_DOUBLE_PROP(cursorHighlightRadius);
     WRITE_DOUBLE_PROP(cursorHighlightBorderWidth);
-
     WRITE_BOOL_PROP(darkTheme);
-
-    WRITE_COMMENT("The name of the theme to be used by Xournal++, instead of the default.
-This might be, for example, Adwaita:dark.");
-    WRITE_STRING_PROP(overrideThemeName);
 
     WRITE_BOOL_PROP(disableScrollbarFadeout);
 
@@ -1529,17 +1521,6 @@ void Settings::setDarkTheme(bool dark) {
 }
 
 auto Settings::isDarkTheme() const -> bool { return this->darkTheme; }
-
-void Settings::setThemeName(const std::string& theme) {
-    if (this->overrideThemeName != theme) {
-        return;
-    }
-
-    this->overrideThemeName = theme;
-    save();
-}
-
-auto Settings::getThemeName() const -> std::string { return this->overrideThemeName; }
 
 auto Settings::isSidebarVisible() const -> bool { return this->showSidebar; }
 
