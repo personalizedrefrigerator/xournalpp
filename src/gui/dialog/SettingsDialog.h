@@ -71,6 +71,8 @@ private:
     void initMouseButtonEvents();
     void initMouseButtonEvents(const char* hbox, int button, bool withDevice = false);
 
+    void initGtkThemeSettings();
+
     void initLanguageSettings();
 
 private:
