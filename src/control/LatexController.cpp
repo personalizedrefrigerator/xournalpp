@@ -23,7 +23,7 @@
 LatexController::LatexController(Control* control):
         control(control),
         settings(control->getSettings()->latexSettings),
-        dlg(control->getGladeSearchPath()),
+        dlg(control->getGladeSearchPath(), settings),
         doc(control->getDocument()),
         texTmpDir(Util::getTmpDirSubfolder("tex")),
         generator(settings) {

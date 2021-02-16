@@ -20,4 +20,10 @@ public:
     bool autoCheckDependencies{true};
     fs::path globalTemplatePath{};
     std::string genCmd{"pdflatex -interaction=nonstopmode '{}'"};
+
+    /**
+     * LaTeX editor theme. Only used if linked with the GtkSourceView
+     * libaray.
+     */
+    std::string sourceViewThemeId{};
 };
