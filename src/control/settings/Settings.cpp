@@ -506,6 +506,12 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->latexSettings.editorFont = std::string{reinterpret_cast<char*>(value)};
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("latexSettings.useCustomEditorFont")) == 0) {
         this->latexSettings.useCustomEditorFont = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("latexSettings.sourceViewAutoIndent")) == 0) {
+        this->latexSettings.sourceViewAutoIndent = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("latexSettings.sourceViewSyntaxHighlight")) == 0) {
+        this->latexSettings.sourceViewSyntaxHighlight = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("latexSettings.sourceViewShowLineNumbers")) == 0) {
+        this->latexSettings.sourceViewShowLineNumbers = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("snapRecognizedShapesEnabled")) == 0) {
         this->snapRecognizedShapesEnabled = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("restoreLineWidthEnabled")) == 0) {
@@ -950,6 +956,9 @@ void Settings::save() {
     WRITE_STRING_PROP(latexSettings.sourceViewThemeId);
     WRITE_FONT_PROP(latexSettings.editorFont);
     WRITE_BOOL_PROP(latexSettings.useCustomEditorFont);
+    WRITE_BOOL_PROP(latexSettings.sourceViewAutoIndent);
+    WRITE_BOOL_PROP(latexSettings.sourceViewSyntaxHighlight);
+    WRITE_BOOL_PROP(latexSettings.sourceViewShowLineNumbers);
 
     xmlNodePtr xmlFont = nullptr;
     xmlFont = xmlNewChild(root, nullptr, reinterpret_cast<const xmlChar*>("property"), nullptr);
