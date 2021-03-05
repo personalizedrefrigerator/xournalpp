@@ -51,12 +51,12 @@ void XournalScheduler::removeSource(void* source, JobType type, JobPriority prio
     for (int i = 0; i < length; i++) {
         Job* job = static_cast<Job*>(g_queue_peek_nth(this->jobQueue[priority], i));
 
-        if (job->getType() == type) {
+        if (job != nullptr && job->getType() == type) {
             if (job->getSource() == source) {
                 job->deleteJob();
                 g_queue_remove(this->jobQueue[priority], job);
                 job->unref();
-                break;
+                //break;
             }
         }
     }
