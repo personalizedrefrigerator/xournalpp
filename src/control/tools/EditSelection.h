@@ -21,6 +21,7 @@
 #include "model/PageRef.h"
 #include "model/Snapping.h"
 #include "undo/UndoAction.h"
+#include "util/Rectangle.h"
 #include "view/ElementContainer.h"
 
 #include "CursorSelectionType.h"
@@ -222,7 +223,7 @@ public:
     void mouseMove(double x, double y, bool alt);
 
     /**
-     * If the selection should moved (or rescaled)
+     * If the user is currently moving the selection.
      */
     bool isMoving();
 
@@ -266,6 +267,12 @@ private:
     XojPageView* getPageViewUnderCursor();
 
     /**
+     * Gets the selection's bounding box in view coordinates. This takes document zoom
+     * and selection rotation into account.
+     */
+    Rectangle<double> getBoundingBoxInView() const;
+
+    /**
      * Translate all coordinates which are relative to the current view to the new view,
      * and set the attribute view to the new view
      */
@@ -282,11 +289,13 @@ private:
     void scaleShift(double fx, double fy, bool changeLeft, bool changeTop);
 
     /**
-     * Set edge panning signal.
+     * Handle view panning when the selection is past the edge of the page.
+     * This will not move the selection, only the view.
+     *
+     * @param panDx The x-amount the user panned (in relative coordinates).
+     * @param panDy The y-amount to pan the selection (in relative coordinates).
      */
-    void setEdgePan(bool edgePan);
-
-    static bool handleEdgePan(EditSelection* self);
+    void handleEdgePan(double panDx, double panDy);
 
 private:  // DATA
     /**
